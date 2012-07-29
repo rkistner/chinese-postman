@@ -1,5 +1,9 @@
 #!/usr/bin/env python2.7
 from __future__ import print_function
+import os
+from tempfile import mkstemp
+import tempfile
+import subprocess
 
 __author__ = 'Ralf Kistner'
 
@@ -53,8 +57,9 @@ def import_csv_graph(file):
             continue
 
         start_node, end_node, length = map(int, row[:3])
-        id, start_lon, start_lat, end_lon, end_lat = row[3:8]
-        graph.add_edge(start_node, end_node, weight=length, id=id)
+        id = row[3]
+        start_lon, start_lat, end_lon, end_lat = map(float, row[4:8])
+        graph.add_edge(start_node, end_node, weight=length, id=id, label=id)
 
         # We keep the GPS coordinates as strings
         graph.node[start_node]['longitude'] = start_lon
@@ -63,6 +68,31 @@ def import_csv_graph(file):
         graph.node[end_node]['latitude'] = end_lat
 
     return graph
+
+def specify_positions(graph):
+    lat_min = min([data['latitude'] for n, data in graph.nodes(data=True)])
+    lat_max = max([data['latitude'] for n, data in graph.nodes(data=True)])
+    lon_min = min([data['longitude'] for n, data in graph.nodes(data=True)])
+    lon_max = max([data['longitude'] for n, data in graph.nodes(data=True)])
+
+    for node, data in graph.nodes(data=True):
+        latitude = data['latitude']
+        longitude = data['longitude']
+        y = (latitude - lat_min) / (lat_max - lat_min) * 1000
+        x = (longitude - lon_min) / (lon_max - lon_min) * 1000
+        graph.node[node]['pos'] = "%d,%d" % (int(x), int(y))
+
+
+
+def make_png(graph, path):
+    fd, dotfile = tempfile.mkstemp(prefix="graph", suffix=".dot")
+    try:
+        dfile = dotfile
+        nx.write_dot(graph, dfile)
+
+        subprocess.call(['neato', '-n2', '-Tpng', '-o', path, dfile])
+    finally:
+        os.remove(dotfile)
 
 
 def validate_graph(graph):
@@ -139,8 +169,8 @@ def as_gpx(graph, track_list, name=None):
             longitude = graph.node[u].get('longitude')
             latitude = graph.node[u].get('latitude')
             trkpt = doc.createElement("trkpt")
-            trkpt.setAttribute("lat", latitude)
-            trkpt.setAttribute("lon", longitude)
+            trkpt.setAttribute("lat", str(latitude))
+            trkpt.setAttribute("lon", str(longitude))
             ele = doc.createElement("ele")
             ele.appendChild(doc.createTextNode(str(u)))
             trkpt.appendChild(ele)
@@ -211,6 +241,7 @@ if __name__ == '__main__':
     parser.add_argument("input", help="input CSV file", type=argparse.FileType('rb'))
     parser.add_argument("--gpx", help="GPX output file", type=argparse.FileType('wb'))
     parser.add_argument("--csv", help="CSV output file", type=argparse.FileType('wb'))
+    parser.add_argument("--png", help="PNG output file", type=argparse.FileType('wb'))
     args = parser.parse_args()
 
     graph = import_csv_graph(args.input)
@@ -233,4 +264,8 @@ if __name__ == '__main__':
 
     if args.csv:
         write_csv(graph, nodes, args.csv)
+
+    if args.png:
+        specify_positions(eulerian_graph)
+        make_png(eulerian_graph, args.png.name)
 
