@@ -118,8 +118,8 @@ def odd_graph(graph):
     odd_nodes = [n for n in graph.nodes() if graph.degree(n) % 2 == 1]
     for u in odd_nodes:
         # We calculate the shortest paths twice here, but the overall performance hit is low
-        paths = nx.shortest_path(graph, source=u)
-        lengths = nx.shortest_path_length(graph, source=u)
+        paths = nx.shortest_path(graph, source=u, weight='weight')
+        lengths = nx.shortest_path_length(graph, source=u, weight='weight')
         for v in odd_nodes:
             if u <= v:
                 # We only add each edge once
@@ -199,7 +199,49 @@ def edge_sum(graph):
         total += data['weight']
     return total
 
-def chinese_postman_path(graph):
+def matching_cost(graph, matching):
+    # Calculate the cost of the additional edges
+    cost = 0
+    for u, v in matching.items():
+        if v <= u:
+            continue
+        data = graph[u][v]
+        cost += abs(data['weight'])
+    return cost
+
+def find_matchings(graph, n=5):
+    """
+    Find the n best matchings for a graph. The best matching is guaranteed to be the best, but the others are only
+    estimates.
+    """
+    best_matching = nx.max_weight_matching(graph, True)
+    matchings = [best_matching]
+    for u, v in best_matching.items():
+        if v <= u:
+            continue
+        # Remove the matching
+        smaller_graph = nx.Graph(graph)
+        smaller_graph.remove_edge(u, v)
+        matching = nx.max_weight_matching(smaller_graph, True)
+        matchings.append(matching)
+
+    matching_costs = [(matching_cost(graph, matching), matching) for matching in matchings]
+    matching_costs.sort()
+
+    # HACK: The above code end up giving duplicates of the same path, even though the matching is different. To prevent
+    # this, we remove matchings with the same cost.
+    final_matchings = []
+    last_cost = None
+    for cost, matching in matching_costs:
+        if cost == last_cost:
+            continue
+        last_cost = cost
+        final_matchings.append((cost, matching))
+
+    return final_matchings
+
+
+def chinese_postman_paths(graph, n=5):
     """
     Given a graph, return a list of node id's forming the shortest chinese postman path.
     """
@@ -208,32 +250,34 @@ def chinese_postman_path(graph):
     odd = odd_graph(graph)
 
     # Find the best matching of pairs of odd nodes
-    matching = nx.max_weight_matching(odd, True)
+    matchings = find_matchings(odd, n)
 
-    # Copy the original graph to a multigraph (so we can add more edges between the same nodes)
-    eulerian_graph = nx.MultiGraph(graph)
+    paths = []
+    for cost, matching in matchings[:n]:
+        # Copy the original graph to a multigraph (so we can add more edges between the same nodes)
+        eulerian_graph = nx.MultiGraph(graph)
 
-    # For each matched pair of odd vertices, connect them with the shortest path between them
-    for u, v in matching.items():
-        if v <= u:
-            # Each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
-            continue
-        edge = odd[u][v]
-        path = edge['path'] # The shortest path between the two nodes, calculated in odd_graph()
+        # For each matched pair of odd vertices, connect them with the shortest path between them
+        for u, v in matching.items():
+            if v <= u:
+                # Each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
+                continue
+            edge = odd[u][v]
+            path = edge['path'] # The shortest path between the two nodes, calculated in odd_graph()
 
-        # Add each segment in this path to the graph again
-        for p, q in pairs(path):
-            eulerian_graph.add_edge(p, q, weight=graph[p][q]['weight'])
+            # Add each segment in this path to the graph again
+            for p, q in pairs(path):
+                eulerian_graph.add_edge(p, q, weight=graph[p][q]['weight'])
 
-    # Now that we have an eulerian graph, we can calculate the eulerian circuit
-    circuit = list(nx.eulerian_circuit(eulerian_graph))
-    nodes = []
-    for u, v in circuit:
-        nodes.append(u)
-    # Close the loop
-    nodes.append(circuit[0][0])
-
-    return eulerian_graph, nodes
+        # Now that we have an eulerian graph, we can calculate the eulerian circuit
+        circuit = list(nx.eulerian_circuit(eulerian_graph))
+        nodes = []
+        for u, v in circuit:
+            nodes.append(u)
+        # Close the loop
+        nodes.append(circuit[0][0])
+        paths.append((eulerian_graph, nodes))
+    return paths
 
 if __name__ == '__main__':
     import argparse
@@ -248,16 +292,21 @@ if __name__ == '__main__':
     graph = validate_graph(graph)
 
 
-    eulerian_graph, nodes = chinese_postman_path(graph)
+    paths = chinese_postman_paths(graph, n=5)
 
-    in_length = edge_sum(graph)/1000.0
-    path_length = edge_sum(eulerian_graph)/1000.0
-    duplicate_length = path_length - in_length
+    for eulerian_graph, nodes in paths:
 
-    print("Total length of roads: %.3f km" % in_length)
-    print("Total length of path: %.3f km" % path_length)
-    print("Section visited twice: %.3f km" % duplicate_length)
-    print("Node sequence:", nodes)
+        in_length = edge_sum(graph)/1000.0
+        path_length = edge_sum(eulerian_graph)/1000.0
+        duplicate_length = path_length - in_length
+
+        print("Total length of roads: %.3f km" % in_length)
+        print("Total length of path: %.3f km" % path_length)
+        print("Length of sections visited twice: %.3f km" % duplicate_length)
+        print("Node sequence:", nodes)
+        print()
+
+    eulerian_graph, nodes = paths[0]    # The best one
 
     if args.gpx:
         args.gpx.write(as_gpx(graph, [{'points': nodes}]))
