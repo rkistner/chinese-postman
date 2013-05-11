@@ -7,7 +7,7 @@ This is a Python program to solve the [Chinese postman problem](http://en.wikipe
 * Python2.7
 * [networkx](http://networkx.lanl.gov/)
 
-## Usage
+## Command-line Usage
 
 Input data file must be in CSV format, with each row containing the following columns:
 

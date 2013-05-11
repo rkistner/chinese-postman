@@ -6,3 +6,6 @@
 *.pyc
 *.png
 *.osm
+*.egg
+
+resources.py

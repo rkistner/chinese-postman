@@ -1,14 +1,19 @@
 #!/usr/bin/env python2.7
 from __future__ import print_function
 import os
-from tempfile import mkstemp
+import sys
 import tempfile
 import subprocess
 
 __author__ = 'Ralf Kistner'
 
+# Use the bundled networkx egg
+if __name__ == '__main__':
+    nxegg = 'lib/networkx-1.7-py2.7.egg'
+else:
+    nxegg = os.path.join(os.path.dirname(__file__), 'lib/networkx-1.7-py2.7.egg')
+sys.path.append(nxegg)
 
-import sys
 import csv
 import networkx as nx
 import xml.dom.minidom as minidom
@@ -317,4 +322,3 @@ if __name__ == '__main__':
     if args.png:
         specify_positions(eulerian_graph)
         make_png(eulerian_graph, args.png.name)
-
