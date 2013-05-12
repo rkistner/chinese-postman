@@ -76,23 +76,43 @@ class ChinesePostman:
 
         component = components[0]
 
-        paths = postman.chinese_postman_paths(component, n=1)
+        eulerian_graph, nodes = postman.single_chinese_postman_path(component)
 
-        for eulerian_graph, nodes in paths:
+        in_length = postman.edge_sum(component)/1000.0
+        path_length = postman.edge_sum(eulerian_graph)/1000.0
+        duplicate_length = path_length - in_length
 
-            in_length = postman.edge_sum(component)/1000.0
-            path_length = postman.edge_sum(eulerian_graph)/1000.0
-            duplicate_length = path_length - in_length
+        info = ""
+        info += "Total length of roads: %.3f km\n" % in_length
+        info += "Total length of path: %.3f km\n" % path_length
+        info += "Length of sections visited twice: %.3f km\n" % duplicate_length
 
-            info = ""
-            info += "Total length of roads: %.3f km\n" % in_length
-            info += "Total length of path: %.3f km\n" % path_length
-            info += "Length of sections visited twice: %.3f km\n" % duplicate_length
+        QMessageBox.information(None, "Chinese Postman", "Done:\n%s" % info)
+        newlayer = build_layer(eulerian_graph, nodes, layer.crs())
+        QgsMapLayerRegistry.instance().addMapLayer(newlayer)
 
-            QMessageBox.information(None, "Chinese Postman", "Done:\n%s" % info)
-            newlayer = build_layer(eulerian_graph, nodes, layer.crs())
-            QgsMapLayerRegistry.instance().addMapLayer(newlayer)
 
+def set_symbols(layer):
+    symbol = QgsSymbolV2.defaultSymbol(layer.geometryType())
+
+    symbol.setColor(QColor('#ff0000'))
+    symbol.setAlpha(1)
+
+    layer1 = QgsSimpleLineSymbolLayerV2(QgsSymbolV2.Marker)
+    layer1.setColor(QColor('#00ff00'))
+
+    layer2 = QgsSimpleLineSymbolLayerV2(QgsSymbolV2.Line)
+    layer2.setColor(QColor('#0000ff'))
+
+    symbol.appendSymbolLayer(layer1)
+    symbol.appendSymbolLayer(layer2)
+
+    # marker: {PyQt4.QtCore.QString(u'offset'): PyQt4.QtCore.QString(u'-1'), PyQt4.QtCore.QString(u'interval'): PyQt4.QtCore.QString(u'3'), PyQt4.QtCore.QString(u'rotate'): PyQt4.QtCore.QString(u'1'), PyQt4.QtCore.QString(u'placement'): PyQt4.QtCore.QString(u'interval')}
+    # line:   {PyQt4.QtCore.QString(u'color'): PyQt4.QtCore.QString(u'255,238,0,255'), PyQt4.QtCore.QString(u'offset'): PyQt4.QtCore.QString(u'0'), PyQt4.QtCore.QString(u'penstyle'): PyQt4.QtCore.QString(u'solid'), PyQt4.QtCore.QString(u'width'): PyQt4.QtCore.QString(u'0.26'), PyQt4.QtCore.QString(u'use_custom_dash'): PyQt4.QtCore.QString(u'0'), PyQt4.QtCore.QString(u'joinstyle'): PyQt4.QtCore.QString(u'bevel'), PyQt4.QtCore.QString(u'customdash'): PyQt4.QtCore.QString(u'5;2'), PyQt4.QtCore.QString(u'capstyle'): PyQt4.QtCore.QString(u'square')}
+    myRenderer = QgsSingleSymbolRendererV2(symbol)
+    #myRenderer.setMode(QgsGraduatedSymbolRendererV2.EqualInterval)
+
+    layer.setRendererV2(myRenderer)
 
 def build_layer(graph, nodes, crs):
     # create layer
@@ -123,7 +143,10 @@ def build_layer(graph, nodes, crs):
     # update layer's extent when new features have been added
     # because change of extent in provider is not propagated to the layer
     vl.updateExtents()
+
+    #set_symbols(vl)
     return vl
+
 
 def build_graph(features):
     graph = nx.Graph()
