@@ -24,7 +24,7 @@ def name():
 def description():
     return "Chinese Postman Solver"
 def version():
-    return "Version 0.1"
+    return "0.1"
 def icon():
     return "icon.png"
 def qgisMinimumVersion():

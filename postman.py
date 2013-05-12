@@ -100,17 +100,13 @@ def make_png(graph, path):
         os.remove(dotfile)
 
 
-def validate_graph(graph):
+def graph_components(graph):
     # The graph may contain multiple components, but we can only handle one connected component. If the graph contains
     # more than one connected component, we only use the largest one.
     components = nx.connected_component_subgraphs(graph)
     components.sort(key=lambda c: c.size(), reverse=True)
 
-    if len(components) > 1:
-        print("Warning: input graph contains multiple components, only using the first one", file=sys.stderr)
-
-    main_component = components[0]
-    return main_component
+    return components
 
 
 

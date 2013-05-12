@@ -58,15 +58,29 @@ class ChinesePostman:
     # run method that performs all the real work
     def run(self):
         layer = self.iface.mapCanvas().currentLayer()
+        if layer is None:
+            QMessageBox.information(None, "Chinese Postman", "Please select a layer.")
+            return
 
-        graph = build_graph(layer.selectedFeatures())
-        graph = postman.validate_graph(graph)
+        features = layer.selectedFeatures()
+        if len(features) == 0:
+            QMessageBox.information(None, "Chinese Postman", "Please an area. The 'Select Features by Polygon' tool " +
+                                                            "works well for this.")
+            return
 
-        paths = postman.chinese_postman_paths(graph, n=1)
+        graph = build_graph(features)
+        components = postman.graph_components(graph)
+        if len(components) > 1:
+            QMessageBox.information(None, "Chinese Postman", "Warning: the selected area contains multiple disconnected " +
+                                                             "components - only the largest one will be used.")
+
+        component = components[0]
+
+        paths = postman.chinese_postman_paths(component, n=1)
 
         for eulerian_graph, nodes in paths:
 
-            in_length = postman.edge_sum(graph)/1000.0
+            in_length = postman.edge_sum(component)/1000.0
             path_length = postman.edge_sum(eulerian_graph)/1000.0
             duplicate_length = path_length - in_length
 

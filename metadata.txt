@@ -11,7 +11,7 @@ description=Chinese Postman Solver
 version=0.1
 qgisMinimumVersion=1.7
 class_name=ChinesePostman
-website=
+website=https://github.com/rkistner/chinese-postman
 [author]
 name=Ralf Kistner
 email=ralf.kistner@gmail.com
