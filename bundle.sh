@@ -1,2 +1,7 @@
 #!/bin/sh
-zip chinesepostman *.py lib/*.egg metadata.txt icon.png
+mkdir -p chinesepostman/lib
+cp *.py metadata.txt icon.png chinesepostman/
+cp lib/*.egg chinesepostman/lib/
+zip -r chinesepostman chinesepostman
+rm -r chinesepostman
+

@@ -29,6 +29,16 @@ def icon():
     return "icon.png"
 def qgisMinimumVersion():
     return "1.7"
+def author():
+    return "Ralf Kistner"
+def authorName():
+    return "Ralf Kistner"
+def email():
+    return "ralf.kistner@gmail.com"
+def experimental():
+    return True
+def homepage():
+    return "https://github.com/rkistner/chinese-postman"
 def classFactory(iface):
     # load ChinesePostman class from file ChinesePostman
     from chinesepostman import ChinesePostman

@@ -7,11 +7,12 @@ This is a Python program to solve the [Chinese postman problem](http://en.wikipe
 Python 2.7 is required for the plugin to run. Therefore this only works on QGIS 1.8+ on Windows (which bundles Python 2.7).
 The plugin may work on QGIS 1.7+ on Linux, as long as you have Python 2.7 installed.
 
-1. In QGIS, install the plugin with Plugins -> Fetch Python Plugins -> Search for "Chinese Postman".
-2. Under Plugins -> Manage Plugins, enable the plugin.
-3. Select the layer for which you want to solve the CPP.
-4. Select the features that you want to use. The "Select Features by Polygon" tool works great if you only want to use a small part of a large network.
-5. Run Plugins -> Chinese Postman -> Chinese Postman.
+1. Download the plugin from [here](http://plugins.qgis.org/plugins/chinesepostman/version/0.1/).
+2. Extract the zip file to C:\Users\Yourname\.qgis\python\plugins on Windows, or ~/.qgis/python/plugins on Unix.
+3. Under Plugins -> Manage Plugins, enable the plugin.
+4. Select the layer for which you want to solve the CPP.
+5. Select the features that you want to use. The "Select Features by Polygon" tool works great if you only want to use a small part of a large network.
+6. Run Plugins -> Chinese Postman -> Chinese Postman.
 
 It should create a new layer with the results.
 
