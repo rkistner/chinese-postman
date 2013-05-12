@@ -7,5 +7,6 @@
 *.png
 *.osm
 *.egg
+*~
 
 resources.py
