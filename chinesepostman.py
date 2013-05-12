@@ -82,37 +82,43 @@ class ChinesePostman:
         path_length = postman.edge_sum(eulerian_graph)/1000.0
         duplicate_length = path_length - in_length
 
+        newlayer = build_layer(eulerian_graph, nodes, layer.crs())
+        symbol = build_symbol(newlayer)
+        newlayer.setRendererV2(QgsSingleSymbolRendererV2(symbol))
+        QgsMapLayerRegistry.instance().addMapLayer(newlayer)
+
         info = ""
         info += "Total length of roads: %.3f km\n" % in_length
         info += "Total length of path: %.3f km\n" % path_length
         info += "Length of sections visited twice: %.3f km\n" % duplicate_length
 
-        QMessageBox.information(None, "Chinese Postman", "Done:\n%s" % info)
-        newlayer = build_layer(eulerian_graph, nodes, layer.crs())
-        QgsMapLayerRegistry.instance().addMapLayer(newlayer)
+        QMessageBox.information(None, "Chinese Postman", info)
 
+def build_symbol(layer):
+    registry = QgsSymbolLayerV2Registry.instance()
+    lineMeta = registry.symbolLayerMetadata("SimpleLine")
+    markerMeta = registry.symbolLayerMetadata("MarkerLine")
 
-def set_symbols(layer):
     symbol = QgsSymbolV2.defaultSymbol(layer.geometryType())
 
-    symbol.setColor(QColor('#ff0000'))
-    symbol.setAlpha(1)
+    # Line layer
+    lineLayer = lineMeta.createSymbolLayer({'width': '0.26', 'color': '255,0,0', 'offset': '-1.0', 'penstyle': 'solid', 'use_custom_dash': '0', 'joinstyle': 'bevel', 'capstyle': 'square'})
 
-    layer1 = QgsSimpleLineSymbolLayerV2(QgsSymbolV2.Marker)
-    layer1.setColor(QColor('#00ff00'))
+    # Marker layer
+    markerLayer = markerMeta.createSymbolLayer({'width': '0.26', 'color': '255,0,0', 'interval': '3', 'rotate': '1', 'placement': 'interval', 'offset': '-1.0'})
+    subSymbol = markerLayer.subSymbol()
+    # Replace the default layer with our own SimpleMarker
+    subSymbol.deleteSymbolLayer(0)
+    triangle = registry.symbolLayerMetadata("SimpleMarker").createSymbolLayer({'name': 'filled_arrowhead', 'color': '255,0,0', 'color_border': '0,0,0', 'offset': '0,0', 'size': '1.5', 'angle': '0'})
+    subSymbol.appendSymbolLayer(triangle)
 
-    layer2 = QgsSimpleLineSymbolLayerV2(QgsSymbolV2.Line)
-    layer2.setColor(QColor('#0000ff'))
+    # Replace the default layer with our two custom layers
+    symbol.deleteSymbolLayer(0)
+    symbol.appendSymbolLayer(lineLayer)
+    symbol.appendSymbolLayer(markerLayer)
+    
+    return symbol
 
-    symbol.appendSymbolLayer(layer1)
-    symbol.appendSymbolLayer(layer2)
-
-    # marker: {PyQt4.QtCore.QString(u'offset'): PyQt4.QtCore.QString(u'-1'), PyQt4.QtCore.QString(u'interval'): PyQt4.QtCore.QString(u'3'), PyQt4.QtCore.QString(u'rotate'): PyQt4.QtCore.QString(u'1'), PyQt4.QtCore.QString(u'placement'): PyQt4.QtCore.QString(u'interval')}
-    # line:   {PyQt4.QtCore.QString(u'color'): PyQt4.QtCore.QString(u'255,238,0,255'), PyQt4.QtCore.QString(u'offset'): PyQt4.QtCore.QString(u'0'), PyQt4.QtCore.QString(u'penstyle'): PyQt4.QtCore.QString(u'solid'), PyQt4.QtCore.QString(u'width'): PyQt4.QtCore.QString(u'0.26'), PyQt4.QtCore.QString(u'use_custom_dash'): PyQt4.QtCore.QString(u'0'), PyQt4.QtCore.QString(u'joinstyle'): PyQt4.QtCore.QString(u'bevel'), PyQt4.QtCore.QString(u'customdash'): PyQt4.QtCore.QString(u'5;2'), PyQt4.QtCore.QString(u'capstyle'): PyQt4.QtCore.QString(u'square')}
-    myRenderer = QgsSingleSymbolRendererV2(symbol)
-    #myRenderer.setMode(QgsGraduatedSymbolRendererV2.EqualInterval)
-
-    layer.setRendererV2(myRenderer)
 
 def build_layer(graph, nodes, crs):
     # create layer
@@ -144,7 +150,6 @@ def build_layer(graph, nodes, crs):
     # because change of extent in provider is not propagated to the layer
     vl.updateExtents()
 
-    #set_symbols(vl)
     return vl
 
 
