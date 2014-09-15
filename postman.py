@@ -103,7 +103,7 @@ def make_png(graph, path):
 def graph_components(graph):
     # The graph may contain multiple components, but we can only handle one connected component. If the graph contains
     # more than one connected component, we only use the largest one.
-    components = nx.connected_component_subgraphs(graph)
+    components = list(nx.connected_component_subgraphs(graph))
     components.sort(key=lambda c: c.size(), reverse=True)
 
     return components
