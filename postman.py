@@ -218,9 +218,16 @@ def find_matchings(graph, n=5):
     """
     Find the n best matchings for a graph. The best matching is guaranteed to be the best, but the others are only
     estimates.
+
+    A matching is a subset of edges in which no node occurs more than once.
+
+    The result may contain less than n matchings.
+
+    See http://networkx.lanl.gov/reference/generated/networkx.algorithms.matching.max_weight_matching.html
     """
     best_matching = nx.max_weight_matching(graph, True)
     matchings = [best_matching]
+
     for u, v in best_matching.items():
         if v <= u:
             continue
@@ -228,7 +235,9 @@ def find_matchings(graph, n=5):
         smaller_graph = nx.Graph(graph)
         smaller_graph.remove_edge(u, v)
         matching = nx.max_weight_matching(smaller_graph, True)
-        matchings.append(matching)
+        if len(matching) > 0:
+            # We may get an empty matching if there is only one edge (that we removed).
+            matchings.append(matching)
 
     matching_costs = [(matching_cost(graph, matching), matching) for matching in matchings]
     matching_costs.sort()
