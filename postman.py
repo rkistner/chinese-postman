@@ -56,21 +56,22 @@ def import_csv_graph(file):
     """
     reader = csv.reader(file)
     graph = nx.Graph()
-    for row in reader:
-        if not row[0].isdigit():
-            # Skip any non-integer rows (header rows)
-            continue
+    for row_number, row in enumerate(reader):
+        try:
+            start_node = row[0]
+            end_node = row[1]
+            length = float(row[2])
+            id = row[3]
+            start_lon, start_lat, end_lon, end_lat = map(float, row[4:8])
+            graph.add_edge(start_node, end_node, weight=length, id=id, label=id)
 
-        start_node, end_node, length = map(int, row[:3])
-        id = row[3]
-        start_lon, start_lat, end_lon, end_lat = map(float, row[4:8])
-        graph.add_edge(start_node, end_node, weight=length, id=id, label=id)
-
-        # We keep the GPS coordinates as strings
-        graph.node[start_node]['longitude'] = start_lon
-        graph.node[start_node]['latitude'] = start_lat
-        graph.node[end_node]['longitude'] = end_lon
-        graph.node[end_node]['latitude'] = end_lat
+            # We keep the GPS coordinates as strings
+            graph.node[start_node]['longitude'] = start_lon
+            graph.node[start_node]['latitude'] = start_lat
+            graph.node[end_node]['longitude'] = end_lon
+            graph.node[end_node]['latitude'] = end_lat
+        except ValueError:
+            print("Skipping input row %d" % (row_number+1))
 
     return graph
 
@@ -336,6 +337,8 @@ if __name__ == '__main__':
 
     graph = import_csv_graph(args.input)
     components = graph_components(graph)
+    if len(components) == 0:
+        raise ValueError("No graph components found; check input file")
 
     # Only use the largest component
     component = components[0]
