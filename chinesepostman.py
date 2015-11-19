@@ -125,7 +125,7 @@ def build_layer(graph, nodes, crs):
 
     # We want to set the CRS without prompting the user, so we disable prompting first
     s = QSettings()
-    oldValidation = s.value("/Projections/defaultBehaviour", "useGlobal").toString()
+    oldValidation = s.value("/Projections/defaultBehaviour", "useGlobal")
     s.setValue("/Projections/defaultBehaviour", "useGlobal")
 
     vl = QgsVectorLayer("LineString", "chinese_postman", "memory")
