@@ -156,11 +156,12 @@ def build_layer(graph, nodes, crs):
 
 
 def build_graph(features):
+    d = QgsDistanceArea()
     graph = nx.Graph()
     for feature in features:
         geom = feature.geometry()
         nodes = geom.asPolyline()
         for start, end in postman.pairs(nodes):
-            graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=geom.length())
+            graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=d.measureLine(start, end))
     return graph
 
