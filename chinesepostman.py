@@ -74,6 +74,10 @@ class ChinesePostman:
             QMessageBox.information(None, "Chinese Postman", "Warning: the selected area contains multiple disconnected " +
                                                              "components - only the largest one will be used.")
 
+        if len(components) == 0:
+            QMessageBox.information(None, "Chinese Postman", "Error: Could not find any components. Try selecting different features.")
+            return
+
         component = components[0]
 
         eulerian_graph, nodes = postman.single_chinese_postman_path(component)
