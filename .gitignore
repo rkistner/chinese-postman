@@ -5,7 +5,6 @@
 *.gpx
 *.pyc
 *.osm
-*.egg
 *~
 
 resources.py
