@@ -64,7 +64,7 @@ class ChinesePostman:
 
         features = layer.selectedFeatures()
         if len(features) == 0:
-            QMessageBox.information(None, "Chinese Postman", "Please an area. The 'Select Features by Polygon' tool " +
+            QMessageBox.information(None, "Chinese Postman", "Please select an area. The 'Select Features by Polygon' tool " +
                                                             "works well for this.")
             return
 
@@ -91,6 +91,8 @@ class ChinesePostman:
         info += "Total length of roads: %.3f km\n" % in_length
         info += "Total length of path: %.3f km\n" % path_length
         info += "Length of sections visited twice: %.3f km\n" % duplicate_length
+        info += "\n"
+        info += "(If the above values do not make sense, consider changing CRS.)\n"
 
         QMessageBox.information(None, "Chinese Postman", info)
 
@@ -154,11 +156,12 @@ def build_layer(graph, nodes, crs):
 
 
 def build_graph(features):
+    d = QgsDistanceArea()
     graph = nx.Graph()
     for feature in features:
         geom = feature.geometry()
         nodes = geom.asPolyline()
         for start, end in postman.pairs(nodes):
-            graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=geom.length())
+            graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=d.measureLine(start, end))
     return graph
 
