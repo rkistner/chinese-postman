@@ -2,17 +2,26 @@
 
 This is a Python program to solve the [Chinese postman problem](http://en.wikipedia.org/wiki/Route_inspection_problem).
 
-## Usage with Quantum GIS
+## Usage with QGIS
 
-Python 2.7 is required for the plugin to run. Therefore this only works on QGIS 1.8+ on Windows (which bundles Python 2.7).
-The plugin may work on QGIS 1.7+ on Linux, as long as you have Python 2.7 installed.
 
-1. Download the plugin from [here](http://plugins.qgis.org/plugins/chinesepostman/version/0.1/).
-2. Extract the zip file to C:\Users\Yourname\.qgis\python\plugins on Windows, or ~/.qgis/python/plugins on Unix.
-3. Under Plugins -> Manage Plugins, enable the plugin.
-4. Select the layer for which you want to solve the CPP.
-5. Select the features that you want to use. The "Select Features by Polygon" tool works great if you only want to use a small part of a large network.
-6. Run Plugins -> Chinese Postman -> Chinese Postman.
+## Installation (QGIS 2.x)
+
+Python 2.7 and QGIS 2.x is required for the plugin to run.
+The plugin may work on QGIS 2.x on Linux, as long as you have Python 2.7 and `python-networkx` installed.
+
+Download the "Chinese Postman Solver", using the QGIS plugin manager.
+
+## Manual Installation - Linux / OSX
+
+1. Clone this repository.
+2. Run `./install.sh`.
+
+## Usage in QGIS
+
+1. Select the layer for which you want to solve the CPP.
+2. Select the features that you want to use. The "Select Features by Polygon" tool works great if you only want to use a small part of a large network.
+3. Run Plugins -> Chinese Postman -> Chinese Postman.
 
 It should create a new layer with the results.
 
@@ -52,5 +61,3 @@ output.
 ## License
 
 All code is licensed under [The MIT License (MIT)](http://opensource.org/licenses/MIT).
-
-

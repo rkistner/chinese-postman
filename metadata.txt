@@ -1,7 +1,7 @@
-# This file contains metadata for your plugin. Since 
-# version 2.0 of QGIS this is the proper way to supply 
-# information about a plugin. The old method of 
-# embedding metadata in __init__.py will 
+# This file contains metadata for your plugin. Since
+# version 2.0 of QGIS this is the proper way to supply
+# information about a plugin. The old method of
+# embedding metadata in __init__.py will
 # is no longer supported since version 2.0.
 
 # This file should be included when you package your plugin.
@@ -10,13 +10,13 @@
 [general]
 name=Chinese Postman Solver
 description=Chinese Postman Solver
-version=0.2.0.99
+version=0.2.1
 qgisMinimumVersion=2.0
 homepage=https://github.com/rkistner/chinese-postman
 author=Ralf Kistner
 email=ralf.kistner@gmail.com
 
-about=Chinese Postman Solver solves the Chinese Postman problem, also 
+about=Chinese Postman Solver solves the Chinese Postman problem, also
     known as CPP, postman tour or route inspection problem.
 
 tracker=https://github.com/rkistner/chinese-postman/issues
