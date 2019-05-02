@@ -18,6 +18,12 @@ import csv
 import networkx as nx
 import xml.dom.minidom as minidom
 
+from distutils.version import LooseVersion
+# Below constant is for changes introduced in NetworkX 2.1rc1, but
+# LooseVersion thinks '2.1rc1' is higher than '2.1'. Change to '2.1rc1'
+# when switching to pkg_resources.parse_version/packaging.version.parse.
+_NX_BELOW_2_DOT_1 = (LooseVersion(nx.__version__) < LooseVersion('2.1'))
+
 def pairs(lst, circular=False):
     """
     Loop through all pairs of successive items in a list.
@@ -206,8 +212,8 @@ def edge_sum(graph):
 def matching_cost(graph, matching):
     # Calculate the cost of the additional edges
     cost = 0
-    for u, v in matching.items():
-        if v <= u:
+    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
+        if _NX_BELOW_2_DOT_1 and (v <= u):
             continue
         data = graph[u][v]
         cost += abs(data['weight'])
@@ -228,8 +234,8 @@ def find_matchings(graph, n=5):
     best_matching = nx.max_weight_matching(graph, True)
     matchings = [best_matching]
 
-    for u, v in best_matching.items():
-        if v <= u:
+    for u, v in (best_matching.items() if _NX_BELOW_2_DOT_1 else best_matching):
+        if _NX_BELOW_2_DOT_1 and (v <= u):
             continue
         # Remove the matching
         smaller_graph = nx.Graph(graph)
@@ -264,9 +270,9 @@ def build_eulerian_graph(graph, odd, matching):
     eulerian_graph = nx.MultiGraph(graph)
 
     # For each matched pair of odd vertices, connect them with the shortest path between them
-    for u, v in matching.items():
-        if v <= u:
-            # Each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
+    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
+        if _NX_BELOW_2_DOT_1 and (v <= u):
+            # With max_weight_matching of NetworkX <2.1 each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
             continue
         edge = odd[u][v]
         path = edge['path']  # The shortest path between the two nodes, calculated in odd_graph()
