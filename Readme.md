@@ -31,6 +31,12 @@ Requirements:
 
 * Python2.7
 * [NetworkX](https://networkx.github.io/)
+* Optionally, if you want to export PNG images from the command line (not needed for using the QGIS-plugin):
+  * [Graphviz](https://graphviz.org/), and
+  * One of:
+    * For all NetworkX versions except 1.10: [PyGraphviz](https://pygraphviz.github.io/) (preferred), or
+    * For NetworkX <=1.10 and >=2.0: [pydot](https://github.com/pydot/pydot), or
+    * For NetworkX 1.10 and 1.11: [PyDotPlus](https://pydotplus.readthedocs.io/)
 
 
 Input data file must be in CSV format, with each row containing the following columns:
@@ -57,6 +63,11 @@ Then run (assuming the file is saved as input.csv):
 
 The segment ID and GPS coordinates in the input file are not used for any calculations, but are used for the CSV and GPX
 output.
+
+Use option `--png` to create a graph visualization of the route in PNG image format:
+
+    python postman.py --csv path.csv --gpx path.gpx --png path.png input.csv
+
 
 ## License
 

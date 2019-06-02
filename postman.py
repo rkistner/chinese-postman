@@ -18,6 +18,24 @@ import csv
 import networkx as nx
 import xml.dom.minidom as minidom
 
+from distutils.version import LooseVersion
+
+if LooseVersion(nx.__version__) < LooseVersion('1.11'):
+    write_dot = nx.write_dot
+else:
+    try:
+        import pygraphviz
+        from networkx.drawing.nx_agraph import write_dot
+    except ImportError:
+        try:
+            if LooseVersion(nx.__version__) == LooseVersion('1.11'):
+                import pydotplus
+            else:
+                import pydot
+            from networkx.drawing.nx_pydot import write_dot
+        except ImportError:
+            from networkx.drawing.nx_agraph import write_dot
+
 def pairs(lst, circular=False):
     """
     Loop through all pairs of successive items in a list.
@@ -94,7 +112,7 @@ def make_png(graph, path):
     fd, dotfile = tempfile.mkstemp(prefix="graph", suffix=".dot")
     try:
         dfile = dotfile
-        nx.write_dot(graph, dfile)
+        write_dot(graph, dfile)
 
         subprocess.call(['neato', '-n2', '-Tpng', '-o', path, dfile])
     finally:
