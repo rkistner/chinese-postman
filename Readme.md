@@ -30,7 +30,7 @@ It should create a new layer with the results.
 Requirements:
 
 * Python2.7
-* [networkx](http://networkx.lanl.gov/)
+* [NetworkX](https://networkx.github.io/)
 
 
 Input data file must be in CSV format, with each row containing the following columns:

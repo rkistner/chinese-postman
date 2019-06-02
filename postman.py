@@ -223,7 +223,7 @@ def find_matchings(graph, n=5):
 
     The result may contain less than n matchings.
 
-    See http://networkx.lanl.gov/reference/generated/networkx.algorithms.matching.max_weight_matching.html
+    See https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.matching.max_weight_matching.html
     """
     best_matching = nx.max_weight_matching(graph, True)
     matchings = [best_matching]
