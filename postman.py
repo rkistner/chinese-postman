@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.7
 from __future__ import print_function
-from builtins import map
-from builtins import str
 import os
 import sys
 import tempfile
@@ -265,7 +263,7 @@ def find_matchings(graph, n=5):
             matchings.append(matching)
 
     matching_costs = [(matching_cost(graph, matching), matching) for matching in matchings]
-    matching_costs.sort()
+    matching_costs.sort(key=lambda k: k[0])
 
     # HACK: The above code end up giving duplicates of the same path, even though the matching is different. To prevent
     # this, we remove matchings with the same cost.
@@ -363,9 +361,9 @@ def single_chinese_postman_path(graph):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="input CSV file", type=argparse.FileType('rb'))
-    parser.add_argument("--gpx", help="GPX output file", type=argparse.FileType('wb'))
-    parser.add_argument("--csv", help="CSV output file", type=argparse.FileType('wb'))
+    parser.add_argument("input", help="input CSV file", type=argparse.FileType('r'))
+    parser.add_argument("--gpx", help="GPX output file", type=argparse.FileType('w'))
+    parser.add_argument("--csv", help="CSV output file", type=argparse.FileType('w'))
     parser.add_argument("--png", help="PNG output file", type=argparse.FileType('wb'))
     args = parser.parse_args()
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env python2.7
 from __future__ import print_function
-from __future__ import absolute_import
 
 import unittest
-from . import postman
+import postman
 
 class TestPostman(unittest.TestCase):
     def setUp(self):
@@ -15,7 +14,8 @@ class TestPostman(unittest.TestCase):
         """
         Test the end result.
         """
-        graph = postman.import_csv_graph(open('test_graph.csv', 'r'))
+        with open('test_graph.csv', 'r') as csv:
+            graph = postman.import_csv_graph(csv)
         components = postman.graph_components(graph)
 
         # Only use the largest component
