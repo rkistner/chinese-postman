@@ -183,8 +183,17 @@ def build_graph(features):
     graph = nx.Graph()
     for feature in features:
         geom = feature.geometry()
-        nodes = geom.asPolyline()
-        for start, end in postman.pairs(nodes):
-            graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=d.measureLine(start, end))
+        geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
+        if geomSingleType:
+            nodes = geom.asPolyline()
+            for start, end in postman.pairs(nodes):
+                graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=d.measureLine(start, end))
+        else:
+            lines = geom.asMultiPolyline()
+            for line in lines:
+                for start, end in postman.pairs(line):
+                    graph.add_edge((start[0], start[1]), (end[0], end[1]), weight=d.measureLine(start, end))
+
+
     return graph
 
