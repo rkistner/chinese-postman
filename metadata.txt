@@ -10,9 +10,8 @@
 [general]
 name=Chinese Postman Solver
 description=Chinese Postman Solver
-version=0.2.2
-qgisMinimumVersion=2.0
-qgisMaximumVersion=2.19
+version=0.3.0
+qgisMinimumVersion=3.0
 author=Ralf Kistner
 email=ralf.kistner@gmail.com
 
