@@ -18,22 +18,25 @@
  *                                                                         *
  ***************************************************************************/
 """
+from __future__ import absolute_import
 
 # To reload this plugin after modifying, run:
 # qgis.utils.reloadPlugin('chinesepostman')
 
-import postman
+from builtins import object
+from . import postman
 
 # Import the PyQt and QGIS libraries
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
+from qgis.PyQt.QtCore import QObject, QSettings
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from qgis.PyQt.QtGui import QIcon
+from qgis.core import QgsWkbTypes, QgsApplication, QgsProject, QgsSymbol, QgsSingleSymbolRenderer, QgsFeature, QgsMapLayer, QgsVectorLayer, QgsPointXY, QgsGeometry, QgsDistanceArea, QgsSymbolLayerRegistry
 import networkx as nx
 
 # We need to import resources, even though we don't use it directly
-import resources
+from . import resources
 
-class ChinesePostman:
+class ChinesePostman(object):
 
     def __init__(self, iface):
         # Save reference to the QGIS interface
@@ -44,7 +47,7 @@ class ChinesePostman:
         self.action = QAction(QIcon(":/plugins/chinesepostman/icon.png"), \
             "Chinese Postman", self.iface.mainWindow())
         # connect the action to the run method
-        QObject.connect(self.action, SIGNAL("triggered()"), self.run)
+        self.action.triggered.connect(self.run)
 
         # Add toolbar button and menu item
         self.iface.addToolBarIcon(self.action)
@@ -71,7 +74,7 @@ class ChinesePostman:
                                                              layerHint)
             return
 
-        if layer.geometryType() != QGis.Line:
+        if layer.geometryType() != QgsWkbTypes.LineGeometry:
             QMessageBox.information(None, "Chinese Postman", "The selected layer's geometry type is not Line. " +
                                                              "Chinese Postman cannot work on Point or Polygon." +
                                                              layerHint)
@@ -103,8 +106,9 @@ class ChinesePostman:
 
         newlayer = build_layer(eulerian_graph, nodes, layer.crs())
         symbol = build_symbol(newlayer)
-        newlayer.setRendererV2(QgsSingleSymbolRendererV2(symbol))
-        QgsMapLayerRegistry.instance().addMapLayer(newlayer)
+        newlayer.setRenderer(QgsSingleSymbolRenderer(symbol))
+        
+        QgsProject.instance().addMapLayer(newlayer)
 
         info = ""
         info += "Total length of roads: %.3f km\n" % in_length
@@ -116,11 +120,11 @@ class ChinesePostman:
         QMessageBox.information(None, "Chinese Postman", info)
 
 def build_symbol(layer):
-    registry = QgsSymbolLayerV2Registry.instance()
+    registry = QgsApplication.symbolLayerRegistry()
     lineMeta = registry.symbolLayerMetadata("SimpleLine")
     markerMeta = registry.symbolLayerMetadata("MarkerLine")
 
-    symbol = QgsSymbolV2.defaultSymbol(layer.geometryType())
+    symbol = QgsSymbol.defaultSymbol(layer.geometryType())
 
     # Line layer
     lineLayer = lineMeta.createSymbolLayer({'width': '0.26', 'color': '255,0,0', 'offset': '-1.0', 'penstyle': 'solid', 'use_custom_dash': '0', 'joinstyle': 'bevel', 'capstyle': 'square'})
@@ -159,11 +163,11 @@ def build_layer(graph, nodes, crs):
     # We use a single polyline to represent the route
     points = []
     for node in nodes:
-        points.append(QgsPoint(node[0], node[1]))
+        points.append(QgsPointXY(node[0], node[1]))
 
     # add the feature
     fet = QgsFeature()
-    fet.setGeometry(QgsGeometry.fromPolyline(points))
+    fet.setGeometry(QgsGeometry.fromPolylineXY(points))
 
     pr.addFeatures([fet])
 
