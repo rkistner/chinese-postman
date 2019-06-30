@@ -58,8 +58,23 @@ class ChinesePostman:
     # run method that performs all the real work
     def run(self):
         layer = self.iface.mapCanvas().currentLayer()
+
+        layerHint = "\n\nPlease select a Vector layer of geometry type Line."
+
         if layer is None:
-            QMessageBox.information(None, "Chinese Postman", "Please select a layer.")
+            QMessageBox.information(None, "Chinese Postman", "No layer selected." +
+                                                             layerHint)
+            return
+
+        if layer.type() != QgsMapLayer.VectorLayer:
+            QMessageBox.information(None, "Chinese Postman", "The selected layer is not of type Vector." +
+                                                             layerHint)
+            return
+
+        if layer.geometryType() != QGis.Line:
+            QMessageBox.information(None, "Chinese Postman", "The selected layer's geometry type is not Line. " +
+                                                             "Chinese Postman cannot work on Point or Polygon." +
+                                                             layerHint)
             return
 
         features = layer.selectedFeatures()
