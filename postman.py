@@ -85,7 +85,7 @@ def import_csv_graph(file):
             end_node = row[1]
             length = float(row[2])
             id = row[3]
-            start_lon, start_lat, end_lon, end_lat = list(map(float, row[4:8]))
+            start_lon, start_lat, end_lon, end_lat = map(float, row[4:8])
             graph.add_edge(start_node, end_node, weight=length, id=id, label=id)
 
             # We keep the GPS coordinates as strings
@@ -229,7 +229,7 @@ def edge_sum(graph):
 def matching_cost(graph, matching):
     # Calculate the cost of the additional edges
     cost = 0
-    for u, v in (list(matching.items()) if _NX_BELOW_2_DOT_1 else matching):
+    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
         if _NX_BELOW_2_DOT_1 and (v <= u):
             continue
         data = graph[u][v]
@@ -251,7 +251,7 @@ def find_matchings(graph, n=5):
     best_matching = nx.max_weight_matching(graph, True)
     matchings = [best_matching]
 
-    for u, v in (list(best_matching.items()) if _NX_BELOW_2_DOT_1 else best_matching):
+    for u, v in (best_matching.items() if _NX_BELOW_2_DOT_1 else best_matching):
         if _NX_BELOW_2_DOT_1 and (v <= u):
             continue
         # Remove the matching
@@ -287,7 +287,7 @@ def build_eulerian_graph(graph, odd, matching):
     eulerian_graph = nx.MultiGraph(graph)
 
     # For each matched pair of odd vertices, connect them with the shortest path between them
-    for u, v in (list(matching.items()) if _NX_BELOW_2_DOT_1 else matching):
+    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
         if _NX_BELOW_2_DOT_1 and (v <= u):
             # With max_weight_matching of NetworkX <2.1 each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
             continue
