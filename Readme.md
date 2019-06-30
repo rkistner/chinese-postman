@@ -5,10 +5,9 @@ This is a Python program to solve the [Chinese postman problem](http://en.wikipe
 ## Usage with QGIS
 
 
-## Installation (QGIS 2.x)
+## Installation (QGIS 3.x)
 
-Python 2.7 and QGIS 2.x is required for the plugin to run.
-The plugin may work on QGIS 2.x on Linux, as long as you have Python 2.7 and `python-networkx` installed.
+Python 3.x and QGIS 3.x is required for the plugin to run.
 
 Download the "Chinese Postman Solver", using the QGIS plugin manager.
 
@@ -16,6 +15,8 @@ Download the "Chinese Postman Solver", using the QGIS plugin manager.
 
 1. Clone this repository.
 2. Run `./install.sh`.
+
+Alternatively, run `./bundle.sh`, and install the generated zip file as a plugin.
 
 ## Usage in QGIS
 
@@ -29,7 +30,7 @@ It should create a new layer with the results.
 
 Requirements:
 
-* Python2.7
+* Python2.7 or Python 3.x
 * [NetworkX](https://networkx.github.io/)
 * Optionally, if you want to export PNG images from the command line (not needed for using the QGIS-plugin):
   * [Graphviz](https://graphviz.org/), and
