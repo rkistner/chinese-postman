@@ -19,6 +19,23 @@ import networkx as nx
 import xml.dom.minidom as minidom
 
 from distutils.version import LooseVersion
+
+if LooseVersion(nx.__version__) < LooseVersion('1.11'):
+    write_dot = nx.write_dot
+else:
+    try:
+        import pygraphviz
+        from networkx.drawing.nx_agraph import write_dot
+    except ImportError:
+        try:
+            if LooseVersion(nx.__version__) == LooseVersion('1.11'):
+                import pydotplus
+            else:
+                import pydot
+            from networkx.drawing.nx_pydot import write_dot
+        except ImportError:
+            from networkx.drawing.nx_agraph import write_dot
+
 # Below constant is for changes introduced in NetworkX 2.1rc1, but
 # LooseVersion thinks '2.1rc1' is higher than '2.1'. Change to '2.1rc1'
 # when switching to pkg_resources.parse_version/packaging.version.parse.
@@ -100,7 +117,7 @@ def make_png(graph, path):
     fd, dotfile = tempfile.mkstemp(prefix="graph", suffix=".dot")
     try:
         dfile = dotfile
-        nx.write_dot(graph, dfile)
+        write_dot(graph, dfile)
 
         subprocess.call(['neato', '-n2', '-Tpng', '-o', path, dfile])
     finally:
@@ -229,7 +246,7 @@ def find_matchings(graph, n=5):
 
     The result may contain less than n matchings.
 
-    See http://networkx.lanl.gov/reference/generated/networkx.algorithms.matching.max_weight_matching.html
+    See https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.matching.max_weight_matching.html
     """
     best_matching = nx.max_weight_matching(graph, True)
     matchings = [best_matching]
