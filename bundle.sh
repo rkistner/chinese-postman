@@ -7,7 +7,7 @@ set -e  # Exit on error
 echo "Bundling Chinese Postman Solver plugin..."
 
 # Create temporary directory for the bundle
-BUNDLE_DIR="chinesepostman_bundle"
+BUNDLE_DIR="chinesepostman"
 rm -rf "$BUNDLE_DIR"
 mkdir -p "$BUNDLE_DIR/chinesepostman/lib"
 
