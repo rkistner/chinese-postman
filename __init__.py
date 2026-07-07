@@ -1,35 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-/***************************************************************************
- ChinesePostman
-                                 A QGIS plugin
- Chinese Postman Solver
-                             -------------------
-        begin                : 2013-05-11
-        copyright            : (C) 2013 by Ralf Kistner
-        email                : ralf.kistner@gmail.com
-        git sha              : $Format:%H$
- ***************************************************************************/
+Chinese Postman Solver - QGIS Plugin
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
- This script initializes the plugin, making it known to QGIS.
+This script initializes the plugin, making it known to QGIS.
+
+Author: Ralf Kistner
+Modified for QGIS 4.x and Python 3.9+
 """
 
 
-# noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
-    """Load ChinesePostman class from file ChinesePostman.
-
-    :param iface: A QGIS interface instance.
-    :type iface: QgsInterface
+def classFactory(iface):
     """
-    #
+    Load ChinesePostman class from file ChinesePostman.
+
+    Args:
+        iface: A QGIS interface instance.
+
+    Returns:
+        ChinesePostman: An instance of the plugin class.
+    """
     from .chinesepostman import ChinesePostman
     return ChinesePostman(iface)
