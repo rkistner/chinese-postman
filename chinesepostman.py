@@ -96,10 +96,18 @@ class ChinesePostman(QObject):
             )
             return
 
-        # Check for line geometry type (compatible with QGIS 3.x and 4.x)
-        # QGIS 4.x uses LineStringGeometry, but also supports LineGeometry for backward compatibility
+        # Check for line geometry type
+        # QGIS 3.x uses LineGeometry, QGIS 4.x uses LineStringGeometry
         geometry_type = layer.geometryType()
-        if geometry_type not in (QgsWkbTypes.LineGeometry, QgsWkbTypes.LineStringGeometry):
+        
+        # Get all line geometry types that we support
+        line_types = [QgsWkbTypes.LineGeometry]
+        
+        # Check if LineStringGeometry exists (QGIS 4.x+)
+        if hasattr(QgsWkbTypes, 'LineStringGeometry'):
+            line_types.append(QgsWkbTypes.LineStringGeometry)
+        
+        if geometry_type not in line_types:
             QMessageBox.information(
                 None,
                 "Chinese Postman",
@@ -259,7 +267,7 @@ def build_layer(graph, nodes, crs):
 
     # Create a polyline feature
     if points:
-        # For QGIS 4.x, use fromPolylineXY (compatible with 3.x as well)
+        # For QGIS 3.x and 4.x, use fromPolylineXY (compatible with both)
         geometry = QgsGeometry.fromPolylineXY(points)
         fet = QgsFeature()
         fet.setGeometry(geometry)
