@@ -1,75 +1,368 @@
-## Chinese postman problem
+# Chinese Postman Solver
 
-This is a Python program to solve the [Chinese postman problem](http://en.wikipedia.org/wiki/Route_inspection_problem).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](http://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![NetworkX 2.8+](https://img.shields.io/badge/networkx-2.8+-green.svg)](https://networkx.org/)
+[![QGIS 3.0-4.x](https://img.shields.io/badge/qgis-3.0--4.x-brightgreen.svg)](https://qgis.org/)
 
-## Usage with QGIS
+> **Solves the Chinese Postman Problem (Route Inspection Problem)** – Finds the shortest closed path that traverses every edge of a network at least once.
 
+---
 
-## Installation (QGIS 3.x)
+## 📖 Table of Contents
 
-Python 3.x and QGIS 3.x is required for the plugin to run.
+- [What is the Chinese Postman Problem?](#what-is-the-chinese-postman-problem)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+  - [QGIS Plugin Installation](#qgis-plugin-installation)
+  - [Manual Installation](#manual-installation)
+  - [Development Setup](#development-setup)
+- [Usage](#usage)
+  - [Using the QGIS Plugin](#using-the-qgis-plugin)
+  - [Command-Line Usage](#command-line-usage)
+- [Input/Output Formats](#inputoutput-formats)
+  - [CSV Format](#csv-format)
+  - [GPX Output](#gpx-output)
+  - [PNG Output](#png-output)
+- [Algorithm Overview](#algorithm-overview)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-Download the "Chinese Postman Solver", using the QGIS plugin manager.
+---
 
-## Manual Installation - Linux / OSX
+## 🤔 What is the Chinese Postman Problem?
 
-1. Clone this repository.
-2. Run `./install.sh`.
+The **Chinese Postman Problem (CPP)**, also known as the **Route Inspection Problem**, is a classic problem in graph theory. The goal is to find the **shortest closed path** that traverses **every edge of a graph at least once**. This is particularly useful for:
 
-Alternatively, run `./bundle.sh`, and install the generated zip file as a plugin.
+- **Route optimization** for delivery services, garbage collection, or street sweeping.
+- **Network inspection** (e.g., checking power lines, pipelines).
+- **Tour planning** where all roads must be visited.
 
-## Usage in QGIS
+If the graph is **Eulerian** (all nodes have even degree), the solution is simply an **Eulerian circuit**. Otherwise, some edges must be traversed more than once to make the graph Eulerian.
 
-1. Select the layer for which you want to solve the CPP.
-2. Select the features that you want to use. The "Select Features by Polygon" tool works great if you only want to use a small part of a large network.
-3. Run Plugins -> Chinese Postman -> Chinese Postman.
+---
 
-It should create a new layer with the results.
+## ✨ Features
 
-## Command-line Usage
+- **QGIS Plugin**: Seamless integration with QGIS 3.x and 4.x.
+- **Command-Line Tool**: Solve CPP directly from the terminal.
+- **Multiple Output Formats**: CSV, GPX (for GPS devices), and PNG (graph visualization).
+- **Efficient Algorithm**: Uses the **Blossom algorithm** for optimal pair matching.
+- **Handles Disconnected Graphs**: Automatically uses the largest connected component.
+- **Open Source**: Licensed under MIT.
 
-Requirements:
+---
 
-* Python2.7 or Python 3.x
-* [NetworkX](https://networkx.github.io/)>=2.4
-* Optionally, if you want to export PNG images from the command line (not needed for using the QGIS-plugin):
-  * [Graphviz](https://graphviz.org/), and
-  * One of:
-    * For all NetworkX versions except 1.10: [PyGraphviz](https://pygraphviz.github.io/) (preferred), or
-    * For NetworkX <=1.10 and >=2.0: [pydot](https://github.com/pydot/pydot), or
-    * For NetworkX 1.10 and 1.11: [PyDotPlus](https://pydotplus.readthedocs.io/)
+## 📋 Requirements
 
+### For QGIS Plugin
+| Component | Version |
+|-----------|---------|
+| **QGIS** | 3.0 – 4.x |
+| **Python** | 3.8+ |
+| **NetworkX** | 2.8+ |
 
-Input data file must be in CSV format, with each row containing the following columns:
+### For Command-Line Usage
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| **Python** | 3.8+ | Core runtime |
+| **NetworkX** | 2.8+ | Graph algorithms |
+| **Graphviz** | Latest | PNG export (optional) |
+| **PyGraphviz** | 1.7+ | PNG export (preferred, optional) |
+| **pydot** or **pydotplus** | Latest | PNG export (alternative, optional) |
 
-* Start node ID
-* End node ID
-* Segment length in meters
-* Segment name or ID
-* Start longitude, for example 18.4167
-* Start latitude, for example -33.9167
-* End longitude
-* End latitude
+---
 
-Example:
+## 💻 Installation
 
-    Start Node,End Node,Segment Length,Segment ID,Start Longitude,Start Latitude,End Longitude,End Latitude
-    1,13,57,Segment 1,18.4167,-33.9167,18.6532,-33.8561
-    13,22,80,Segment 2,18.6532,-33.8561,18.7650,-33.7930
+### QGIS Plugin Installation
 
-Then run (assuming the file is saved as input.csv):
+#### Method 1: Using QGIS Plugin Manager (Recommended)
+1. Open QGIS.
+2. Go to **Plugins → Manage and Install Plugins...**
+3. Search for **"Chinese Postman Solver"**.
+4. Click **Install Plugin**.
+5. The plugin will be available under **Plugins → Chinese Postman**.
 
-    python postman.py --csv path.csv --gpx path.gpx input.csv
+#### Method 2: Manual Installation from Source
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/pasqal/chinese-postman.git
+   cd chinese-postman
+   ```
+2. Run the installation script:
+   ```bash
+   ./install.sh
+   ```
+   This copies the plugin to your QGIS plugins directory.
 
+3. Restart QGIS.
 
-The segment ID and GPS coordinates in the input file are not used for any calculations, but are used for the CSV and GPX
-output.
+#### Method 3: Bundled Installation
+1. Run the bundling script to create a ZIP file:
+   ```bash
+   ./bundle.sh
+   ```
+2. In QGIS, go to **Plugins → Manage and Install Plugins... → Install from ZIP**.
+3. Select the generated ZIP file.
 
-Use option `--png` to create a graph visualization of the route in PNG image format:
+### Development Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/pasqal/chinese-postman.git
+   cd chinese-postman
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run tests:
+   ```bash
+   python3 postman_test.py
+   ```
 
-    python postman.py --csv path.csv --gpx path.gpx --png path.png input.csv
+---
 
+## 🎯 Usage
 
-## License
+### Using the QGIS Plugin
 
-All code is licensed under [The MIT License (MIT)](http://opensource.org/licenses/MIT).
+#### Step 1: Prepare Your Data
+- Load a **vector line layer** (e.g., roads, paths, or any network) into QGIS.
+- Ensure the layer has a **valid Coordinate Reference System (CRS)** in meters (e.g., UTM) for accurate distance calculations.
+
+#### Step 2: Select Features
+- Use the **"Select Features by Polygon"** tool to select the area of the network you want to analyze.
+- Alternatively, select features manually.
+
+#### Step 3: Run the Plugin
+1. Go to **Plugins → Chinese Postman → Chinese Postman**.
+2. The plugin will:
+   - Analyze the selected features.
+   - Compute the optimal Chinese Postman path.
+   - Create a new **memory layer** named `chinese_postman` with the result.
+
+#### Step 4: Interpret Results
+A popup will display:
+- **Total length of roads**: Sum of all edge lengths in the input network (in km).
+- **Total length of path**: Length of the computed Chinese Postman path (in km).
+- **Length of sections visited twice**: Extra distance due to duplicated edges (in km).
+
+The result layer will show the **optimal path** as a red line with arrow markers indicating direction.
+
+#### Example Workflow
+1. Load a road network layer (e.g., `roads.shp`).
+2. Select a subset of roads using the polygon selection tool.
+3. Run the plugin.
+4. A new layer appears with the optimal inspection route.
+
+---
+
+### Command-Line Usage
+
+#### Basic Usage
+```bash
+python3 postman.py input.csv
+```
+This computes and displays the optimal path without saving outputs.
+
+#### Save Outputs
+```bash
+# Save as CSV and GPX
+python3 postman.py --csv output.csv --gpx output.gpx input.csv
+
+# Save as CSV, GPX, and PNG (requires Graphviz)
+python3 postman.py --csv output.csv --gpx output.gpx --png output.png input.csv
+```
+
+#### Options
+| Option | Description | Required |
+|--------|-------------|----------|
+| `--csv FILE` | Output CSV file with path segments | No |
+| `--gpx FILE` | Output GPX file for GPS devices | No |
+| `--png FILE` | Output PNG image of the graph | No |
+| `input.csv` | Input CSV file (positional argument) | Yes |
+
+#### Example Output
+```
+Total length of roads: 14.889 km
+Total length of path: 20.316 km
+Length of sections visited twice: 5.427 km
+Node sequence: ['1', '105', '14', '105', '106', ...]
+```
+
+---
+
+## 📄 Input/Output Formats
+
+### CSV Format
+
+#### Input CSV
+The input CSV file must contain the following **8 columns** (in order):
+
+| Column | Type | Description | Example |
+|--------|------|-------------|---------|
+| 1 | String/Number | Start node ID | `1` |
+| 2 | String/Number | End node ID | `13` |
+| 3 | Number | Segment length (meters) | `57.0` |
+| 4 | String | Segment name or ID | `Segment 1` |
+| 5 | Number | Start longitude | `18.4167` |
+| 6 | Number | Start latitude | `-33.9167` |
+| 7 | Number | End longitude | `18.6532` |
+| 8 | Number | End latitude | `-33.8561` |
+
+**Example:**
+```csv
+Start Node,End Node,Segment Length,Segment ID,Start Longitude,Start Latitude,End Longitude,End Latitude
+1,13,57,Segment 1,18.4167,-33.9167,18.6532,-33.8561
+13,22,80,Segment 2,18.6532,-33.8561,18.7650,-33.7930
+```
+
+#### Notes:
+- The **first row is treated as a header** and is automatically skipped.
+- **Segment ID, longitude, and latitude** are used for output but **not for calculations**.
+- **Segment length** is used for distance calculations.
+
+#### Output CSV
+The output CSV file contains the **optimal path segments** in the same format as the input, but ordered according to the Chinese Postman solution.
+
+---
+
+### GPX Output
+
+The GPX file is a standard **GPS Exchange Format** file that can be imported into:
+- GPS devices (Garmin, etc.).
+- Mapping software (QGIS, Google Earth, etc.).
+- Fitness apps (Strava, etc.).
+
+**Features:**
+- Contains a single track with the optimal path.
+- Each track point includes:
+  - Latitude and longitude.
+  - Elevation (set to the node ID for reference).
+
+---
+
+### PNG Output
+
+The PNG file is a **graph visualization** of the Eulerian circuit (optimal path).
+
+**Requirements:**
+- [Graphviz](https://graphviz.org/) must be installed on your system.
+- One of the following Python packages:
+  - `pygraphviz` (recommended)
+  - `pydot`
+  - `pydotplus`
+
+**Installation (Ubuntu/Debian):**
+```bash
+sudo apt-get install graphviz
+pip install pygraphviz
+```
+
+---
+
+## 🧮 Algorithm Overview
+
+The plugin uses the following steps to solve the Chinese Postman Problem:
+
+1. **Identify Odd-Degree Nodes**: Find all nodes with an odd degree (there will always be an even number of these).
+2. **Build Complete Graph of Odd Nodes**: Create a new graph where:
+   - Nodes are the odd-degree nodes from the original graph.
+   - Edges connect every pair of nodes.
+   - Edge weights are the **shortest path distance** between the nodes in the original graph.
+3. **Find Optimal Matching**: Use the **Blossom algorithm** (`nx.max_weight_matching`) to find the best pairing of odd nodes (minimizing total added distance).
+4. **Duplicate Edges**: For each matched pair, duplicate the shortest path between them in the original graph.
+5. **Find Eulerian Circuit**: The modified graph is now Eulerian (all nodes have even degree), so an Eulerian circuit exists and can be found.
+
+**Complexity:**
+- If V' (number of odd-degree nodes) is at least 10% of V (total nodes), the complexity is **O(V³)**.
+
+---
+
+## ❓ Troubleshooting
+
+### Common Issues
+
+#### 1. QGIS Plugin Not Appearing
+- **Cause**: Plugin not installed correctly or QGIS not restarted.
+- **Solution**:
+  - Restart QGIS.
+  - Check that the plugin is in the correct directory (e.g., `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/`).
+  - Run `./install.sh` again.
+
+#### 2. Incorrect Distance Calculations
+- **Cause**: The layer's **CRS is not in meters** (e.g., WGS84).
+- **Solution**:
+  - Reproject the layer to a **projected CRS** (e.g., UTM).
+  - In QGIS: Right-click the layer → **Export → Save Features As...** → Choose a UTM zone.
+
+#### 3. Plugin Crashes on Large Networks
+- **Cause**: The algorithm has **O(V³)** complexity for large graphs.
+- **Solution**:
+  - Select a smaller subset of the network.
+  - Use a more powerful computer.
+  - For very large networks, consider using a heuristic approach (not implemented yet).
+
+#### 4. PNG Export Fails
+- **Cause**: Graphviz or Python bindings not installed.
+- **Solution**:
+  - Install Graphviz: `sudo apt-get install graphviz` (Linux) or download from [graphviz.org](https://graphviz.org/).
+  - Install Python bindings: `pip install pygraphviz` (recommended) or `pip install pydot`.
+
+#### 5. CSV Import Fails
+- **Cause**: Incorrect column order or missing columns.
+- **Solution**:
+  - Ensure the CSV has **exactly 8 columns** in the correct order.
+  - Check that numeric columns (length, coordinates) are valid numbers.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Here’s how you can help:
+
+1. **Report Bugs**: Open an issue on [GitHub](https://github.com/pasqal/chinese-postman/issues).
+2. **Suggest Features**: Open an issue with your feature request.
+3. **Submit Code**:
+   - Fork the repository.
+   - Create a feature branch (`git checkout -b feature/your-feature`).
+   - Commit your changes (`git commit -m 'Add some feature'`).
+   - Push to the branch (`git push origin feature/your-feature`).
+   - Open a Pull Request.
+
+### Development Guidelines
+- Follow **PEP 8** for Python code.
+- Add **docstrings** to new functions.
+- Include **unit tests** for new features.
+- Update the **Readme.md** if you change user-facing functionality.
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+
+```
+Copyright (c) 2013-2024 Ralf Kistner and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
