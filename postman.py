@@ -1,54 +1,40 @@
-#!/usr/bin/env python2.7
-from __future__ import print_function
+#!/usr/bin/env python3
+"""
+Chinese Postman Problem Solver
+
+This module implements the Chinese Postman Problem (CPP) algorithm to find the shortest
+closed path that traverses every edge of a graph at least once.
+
+Author: Ralf Kistner
+Modified for Python 3.8+ and NetworkX 2.8+
+"""
+
 import os
 import sys
 import tempfile
 import subprocess
-
-__author__ = 'Ralf Kistner'
-
-# Use the bundled networkx egg
-if __name__ == '__main__':
-    nxegg = 'lib/networkx-1.7-py2.7.egg'
-else:
-    nxegg = os.path.join(os.path.dirname(__file__), 'lib/networkx-1.7-py2.7.egg')
-sys.path.append(nxegg)
-
 import csv
+
 import networkx as nx
 import xml.dom.minidom as minidom
 
-from distutils.version import LooseVersion
-
-if LooseVersion(nx.__version__) < LooseVersion('1.11'):
-    write_dot = nx.write_dot
-else:
-    try:
-        import pygraphviz
-        from networkx.drawing.nx_agraph import write_dot
-    except ImportError:
-        try:
-            if LooseVersion(nx.__version__) == LooseVersion('1.11'):
-                import pydotplus
-            else:
-                import pydot
-            from networkx.drawing.nx_pydot import write_dot
-        except ImportError:
-            from networkx.drawing.nx_agraph import write_dot
-
-# Below constant is for changes introduced in NetworkX 2.1rc1, but
-# LooseVersion thinks '2.1rc1' is higher than '2.1'. Change to '2.1rc1'
-# when switching to pkg_resources.parse_version/packaging.version.parse.
-_NX_BELOW_2_DOT_1 = (LooseVersion(nx.__version__) < LooseVersion('2.1'))
 
 def pairs(lst, circular=False):
     """
     Loop through all pairs of successive items in a list.
 
-    >>> list(pairs([1, 2, 3, 4]))
-    [(1, 2), (2, 3), (3, 4)]
-    >>> list(pairs([1, 2, 3, 4], circular=True))
-    [(1, 2), (2, 3), (3, 4), (4, 1)]
+    Args:
+        lst: List of items.
+        circular: If True, include the pair (last, first).
+
+    Yields:
+        Tuples of successive items.
+
+    Examples:
+        >>> list(pairs([1, 2, 3, 4]))
+        [(1, 2), (2, 3), (3, 4)]
+        >>> list(pairs([1, 2, 3, 4], circular=True))
+        [(1, 2), (2, 3), (3, 4), (4, 1)]
     """
     i = iter(lst)
     first = prev = item = next(i)
@@ -58,28 +44,47 @@ def pairs(lst, circular=False):
     if circular:
         yield item, first
 
+
 def import_csv_graph(file):
     """
-    Example:
+    Import a graph from a CSV file.
 
-    import_csv_graph(open("test.csv", "rb"))
+    Args:
+        file: File object or path to CSV file.
 
-    Does not handle multigraphs yet (more than 1 edge between the same 2 nodes).
+    Returns:
+        nx.Graph: Graph with nodes and edges annotated with weights and coordinates.
 
-    Each row must have the following (in this order):
-
-    * Start node ID
-    * End node ID
-    * Length in meters
-    * Edge name or ID
-    * Start longitude, for example 18.4167
-    * Start latitude, for example -33.9167
-    * End longitude
-    * End latitude
+    Notes:
+        Each row must have the following columns (in order):
+        - Start node ID
+        - End node ID
+        - Length in meters
+        - Edge name or ID
+        - Start longitude
+        - Start latitude
+        - End longitude
+        - End latitude
+        
+        The first row is assumed to be a header and is skipped if it contains
+        non-numeric values in the first few columns.
     """
     reader = csv.reader(file)
     graph = nx.Graph()
+    
     for row_number, row in enumerate(reader):
+        # Skip empty rows
+        if not row:
+            continue
+            
+        try:
+            # Try to parse the first numeric column (length)
+            # If this fails, assume it's a header row
+            float(row[2])
+        except (ValueError, IndexError):
+            # Skip header row or invalid rows
+            continue
+            
         try:
             start_node = row[0]
             end_node = row[1]
@@ -88,75 +93,115 @@ def import_csv_graph(file):
             start_lon, start_lat, end_lon, end_lat = map(float, row[4:8])
             graph.add_edge(start_node, end_node, weight=length, id=id, label=id)
 
-            # We keep the GPS coordinates as strings
-            graph.node[start_node]['longitude'] = start_lon
-            graph.node[start_node]['latitude'] = start_lat
-            graph.node[end_node]['longitude'] = end_lon
-            graph.node[end_node]['latitude'] = end_lat
-        except ValueError:
-            print("Skipping input row %d" % (row_number+1))
+            # Store GPS coordinates in node attributes
+            graph.nodes[start_node]['longitude'] = start_lon
+            graph.nodes[start_node]['latitude'] = start_lat
+            graph.nodes[end_node]['longitude'] = end_lon
+            graph.nodes[end_node]['latitude'] = end_lat
+        except (ValueError, IndexError) as e:
+            print(f"Skipping input row {row_number + 1}: {e}")
 
     return graph
 
-def specify_positions(graph):
-    lat_min = min([data['latitude'] for n, data in graph.nodes(data=True)])
-    lat_max = max([data['latitude'] for n, data in graph.nodes(data=True)])
-    lon_min = min([data['longitude'] for n, data in graph.nodes(data=True)])
-    lon_max = max([data['longitude'] for n, data in graph.nodes(data=True)])
 
-    for node, data in graph.nodes(data=True):
+def specify_positions(graph):
+    """
+    Assign positions to nodes for graph visualization.
+
+    Args:
+        graph: nx.Graph with 'latitude' and 'longitude' attributes.
+    """
+    nodes = list(graph.nodes(data=True))
+    if not nodes:
+        return
+    
+    lat_min = min([data['latitude'] for _, data in nodes])
+    lat_max = max([data['latitude'] for _, data in nodes])
+    lon_min = min([data['longitude'] for _, data in nodes])
+    lon_max = max([data['longitude'] for _, data in nodes])
+
+    for node, data in nodes:
         latitude = data['latitude']
         longitude = data['longitude']
         y = (latitude - lat_min) / (lat_max - lat_min) * 1000
         x = (longitude - lon_min) / (lon_max - lon_min) * 1000
-        graph.node[node]['pos'] = "%d,%d" % (int(x), int(y))
-
+        graph.nodes[node]['pos'] = f"{int(x)},{int(y)}"
 
 
 def make_png(graph, path):
+    """
+    Generate a PNG image of the graph using Graphviz.
+
+    Args:
+        graph: nx.Graph to visualize.
+        path: Output file path for the PNG image.
+    """
+    try:
+        from networkx.drawing.nx_pydot import write_dot
+    except ImportError:
+        try:
+            import pydot
+            from networkx.drawing.nx_pydot import write_dot
+        except ImportError:
+            try:
+                import pydotplus
+                from networkx.drawing.nx_pydot import write_dot
+            except ImportError:
+                raise ImportError(
+                    "To generate PNG images, install either pygraphviz, pydot, or pydotplus. "
+                    "Also ensure Graphviz is installed on your system."
+                )
+
     fd, dotfile = tempfile.mkstemp(prefix="graph", suffix=".dot")
     try:
-        dfile = dotfile
-        write_dot(graph, dfile)
-
-        subprocess.call(['neato', '-n2', '-Tpng', '-o', path, dfile])
+        write_dot(graph, dotfile)
+        subprocess.call(['neato', '-n2', '-Tpng', '-o', path, dotfile])
     finally:
         os.remove(dotfile)
 
 
 def graph_components(graph):
     """
-    Return connected components as actual subgraph copies, sorted by descending size (edge count).
-    Compatible with NetworkX >= 2.4 / 3.x.
+    Return connected components as subgraph copies, sorted by descending size (edge count).
+
+    Args:
+        graph: Input graph.
+
+    Returns:
+        List of nx.Graph: Connected components, largest first.
     """
-    # Build induced subgraphs for each connected component
     components = [graph.subgraph(c).copy() for c in nx.connected_components(graph)]
-
-    # Sort by size (number of edges) largest-first, consistent with previous behavior
     components.sort(key=lambda c: c.size(), reverse=True)
-
     return components
-
 
 
 def odd_graph(graph):
     """
-    Given a graph G, construct a graph containing only the vertices with odd degree from G. The resulting graph is
-    fully connected, with each weight being the shortest path between the nodes in G.
+    Construct a fully connected graph of odd-degree nodes with edge weights as shortest path distances.
 
-    Complexity: O(V'*(E + V log(V)) )
+    Args:
+        graph: Input graph.
+
+    Returns:
+        nx.Graph: Complete graph of odd-degree nodes with negative weights (for max_weight_matching).
+
+    Notes:
+        The edge weights are negative because max_weight_matching finds the maximum weight matching,
+        but we want the minimum total distance.
     """
     result = nx.Graph()
     odd_nodes = [n for n in graph.nodes() if graph.degree(n) % 2 == 1]
-    for u in odd_nodes:
-        # We calculate the shortest paths twice here, but the overall performance hit is low
-        paths = nx.shortest_path(graph, source=u, weight='weight')
-        lengths = nx.shortest_path_length(graph, source=u, weight='weight')
-        for v in odd_nodes:
-            if u <= v:
-                # We only add each edge once
-                continue
-            # The edge weights are negative for the purpose of max_weight_matching (we want the minimum weight)
+    
+    for i, u in enumerate(odd_nodes):
+        # Calculate shortest paths from u to all other odd nodes
+        paths = dict(nx.shortest_path(graph, source=u, weight='weight'))
+        lengths = dict(nx.shortest_path_length(graph, source=u, weight='weight'))
+        
+        for j, v in enumerate(odd_nodes):
+            if i >= j:
+                continue  # Avoid duplicate edges
+            
+            # Add edge with negative weight (for max_weight_matching)
             result.add_edge(u, v, weight=-lengths[v], path=paths[v])
 
     return result
@@ -164,18 +209,17 @@ def odd_graph(graph):
 
 def as_gpx(graph, track_list, name=None):
     """
-    Convert a list of tracks to GPX format
-    Example:
+    Convert a list of tracks to GPX format.
 
-    >>> g = nx.Graph()
-    >>> g.add_node(1, latitude="31.1", longitude="-18.1")
-    >>> g.add_node(2, latitude="31.2", longitude="-18.2")
-    >>> g.add_node(3, latitude="31.3", longitude="-18.3")
-    >>> print(as_gpx(g, [{'points': [1,2,3]}]))
-    <?xml version="1.0" ?><gpx version="1.0"><trk><name>Track 1</name><number>1</number><trkseg><trkpt lat="31.1" lon="-18.1"><ele>1</ele></trkpt><trkpt lat="31.2" lon="-18.2"><ele>2</ele></trkpt><trkpt lat="31.3" lon="-18.3"><ele>3</ele></trkpt></trkseg></trk></gpx>
+    Args:
+        graph: nx.Graph with 'latitude' and 'longitude' attributes.
+        track_list: List of tracks, where each track is a dict with 'points' (list of node IDs).
+        name: Optional name for the GPX file.
+
+    Returns:
+        str: GPX XML string.
     """
     doc = minidom.Document()
-
     root = doc.createElement("gpx")
     root.setAttribute("version", "1.0")
     doc.appendChild(root)
@@ -186,26 +230,33 @@ def as_gpx(graph, track_list, name=None):
         root.appendChild(gpx_name)
 
     for i, track in enumerate(track_list):
-        nr = i+1
-        track_name = track.get('name') or ("Track %d" % nr)
+        nr = i + 1
+        track_name = track.get('name') or f"Track {nr}"
         trk = doc.createElement("trk")
+        
         trk_name = doc.createElement("name")
         trk_name.appendChild(doc.createTextNode(track_name))
         trk.appendChild(trk_name)
+        
         trk_number = doc.createElement("number")
         trk_number.appendChild(doc.createTextNode(str(nr)))
         trk.appendChild(trk_number)
+        
         trkseg = doc.createElement("trkseg")
 
         for u in track['points']:
-            longitude = graph.node[u].get('longitude')
-            latitude = graph.node[u].get('latitude')
+            node_data = graph.nodes[u]
+            longitude = node_data.get('longitude')
+            latitude = node_data.get('latitude')
+            
             trkpt = doc.createElement("trkpt")
             trkpt.setAttribute("lat", str(latitude))
             trkpt.setAttribute("lon", str(longitude))
+            
             ele = doc.createElement("ele")
             ele.appendChild(doc.createTextNode(str(u)))
             trkpt.appendChild(ele)
+            
             trkseg.appendChild(trkpt)
 
         trk.appendChild(trkseg)
@@ -213,65 +264,96 @@ def as_gpx(graph, track_list, name=None):
 
     return doc.toxml()
 
+
 def write_csv(graph, nodes, out):
+    """
+    Write the path as a CSV file.
+
+    Args:
+        graph: nx.Graph with edge attributes.
+        nodes: List of node IDs in the path.
+        out: File object to write to.
+    """
     writer = csv.writer(out)
-    writer.writerow(["Start Node", "End Node", "Segment Length", "Segment ID", "Start Longitude", "Start Latitude", "End Longitude", "End Latitude"])
-    for u, v in pairs(nodes, False):
-        length = graph[u][v]['weight']
-        id = graph[u][v]['id']
-        start_latitude = graph.node[u].get('latitude')
-        start_longitude = graph.node[u].get('longitude')
-        end_latitude = graph.node[v].get('latitude')
-        end_longitude = graph.node[v].get('longitude')
+    writer.writerow(["Start Node", "End Node", "Segment Length", "Segment ID", 
+                     "Start Longitude", "Start Latitude", "End Longitude", "End Latitude"])
+    
+    for u, v in pairs(nodes, circular=False):
+        edge_data = graph.edges[u, v]
+        length = edge_data['weight']
+        id = edge_data['id']
+        
+        start_latitude = graph.nodes[u].get('latitude')
+        start_longitude = graph.nodes[u].get('longitude')
+        end_latitude = graph.nodes[v].get('latitude')
+        end_longitude = graph.nodes[v].get('longitude')
+        
         writer.writerow([u, v, length, id, start_longitude, start_latitude, end_longitude, end_latitude])
 
+
 def edge_sum(graph):
-    total = 0
-    for u, v, data in graph.edges(data=True):
-        total += data['weight']
-    return total
+    """
+    Calculate the total weight of all edges in the graph.
+
+    Args:
+        graph: nx.Graph with 'weight' attributes.
+
+    Returns:
+        float: Sum of all edge weights.
+    """
+    return sum(data['weight'] for _, _, data in graph.edges(data=True))
+
 
 def matching_cost(graph, matching):
-    # Calculate the cost of the additional edges
+    """
+    Calculate the total cost of a matching (sum of absolute weights).
+
+    Args:
+        graph: nx.Graph with 'weight' attributes.
+        matching: Dict or set of edges representing the matching.
+
+    Returns:
+        float: Total cost of the matching.
+    """
     cost = 0
-    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
-        if _NX_BELOW_2_DOT_1 and (v <= u):
-            continue
-        data = graph[u][v]
+    # In NetworkX >= 2.8, max_weight_matching returns a set of edges
+    for u, v in matching:
+        data = graph.edges[u, v]
         cost += abs(data['weight'])
     return cost
 
 
 def find_matchings(graph, n=5):
     """
-    Find the n best matchings for a graph. The best matching is guaranteed to be the best, but the others are only
-    estimates.
+    Find the n best matchings for a graph.
 
-    A matching is a subset of edges in which no node occurs more than once.
+    Args:
+        graph: nx.Graph (typically the odd-degree graph).
+        n: Number of matchings to find.
 
-    The result may contain less than n matchings.
+    Returns:
+        List of tuples: (cost, matching) for each matching, sorted by cost.
 
-    See https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.matching.max_weight_matching.html
+    Notes:
+        The best matching is guaranteed to be optimal. Subsequent matchings are estimates.
     """
-    best_matching = nx.max_weight_matching(graph, True)
+    # Find the best matching
+    best_matching = nx.max_weight_matching(graph, maxcardinality=True)
     matchings = [best_matching]
 
-    for u, v in (best_matching.items() if _NX_BELOW_2_DOT_1 else best_matching):
-        if _NX_BELOW_2_DOT_1 and (v <= u):
-            continue
-        # Remove the matching
-        smaller_graph = nx.Graph(graph)
+    # Try to find alternative matchings by removing edges from the best matching
+    for u, v in best_matching:
+        smaller_graph = graph.copy()
         smaller_graph.remove_edge(u, v)
-        matching = nx.max_weight_matching(smaller_graph, True)
-        if len(matching) > 0:
-            # We may get an empty matching if there is only one edge (that we removed).
+        matching = nx.max_weight_matching(smaller_graph, maxcardinality=True)
+        if matching:
             matchings.append(matching)
 
+    # Calculate costs and sort
     matching_costs = [(matching_cost(graph, matching), matching) for matching in matchings]
     matching_costs.sort(key=lambda k: k[0])
 
-    # HACK: The above code end up giving duplicates of the same path, even though the matching is different. To prevent
-    # this, we remove matchings with the same cost.
+    # Remove duplicates (matchings with the same cost)
     final_matchings = []
     last_cost = None
     for cost, matching in matching_costs:
@@ -280,101 +362,115 @@ def find_matchings(graph, n=5):
         last_cost = cost
         final_matchings.append((cost, matching))
 
-    return final_matchings
+    return final_matchings[:n]
 
 
 def build_eulerian_graph(graph, odd, matching):
     """
-    Build an Eulerian graph from a matching. The result is a MultiGraph.
-    """
+    Build an Eulerian graph by duplicating edges along the shortest paths for matched pairs.
 
-    # Copy the original graph to a multigraph (so we can add more edges between the same nodes)
+    Args:
+        graph: Original graph.
+        odd: Odd-degree graph (from odd_graph).
+        matching: Matching of odd-degree nodes.
+
+    Returns:
+        nx.MultiGraph: Eulerian graph with duplicated edges.
+    """
     eulerian_graph = nx.MultiGraph(graph)
 
-    # For each matched pair of odd vertices, connect them with the shortest path between them
-    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
-        if _NX_BELOW_2_DOT_1 and (v <= u):
-            # With max_weight_matching of NetworkX <2.1 each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
-            continue
-        edge = odd[u][v]
-        path = edge['path']  # The shortest path between the two nodes, calculated in odd_graph()
+    for u, v in matching:
+        edge = odd.edges[u, v]
+        path = edge['path']  # Shortest path between u and v in the original graph
 
-        # Add each segment in this path to the graph again
+        # Add each segment in the path to the graph again
         for p, q in pairs(path):
-            eulerian_graph.add_edge(p, q, weight=graph[p][q]['weight'])
+            weight = graph.edges[p, q]['weight']
+            eulerian_graph.add_edge(p, q, weight=weight)
 
     return eulerian_graph
 
+
 def eulerian_circuit(graph):
     """
-    Given an Eulerian graph, find one eulerian circuit. Returns the circuit as a list of nodes, with the first and
-    last node being the same.
-    """
+    Find an Eulerian circuit in the graph.
 
+    Args:
+        graph: Eulerian graph (all nodes have even degree).
+
+    Returns:
+        List: Sequence of nodes in the circuit, with the first and last node the same.
+    """
     circuit = list(nx.eulerian_circuit(graph))
     nodes = []
     for u, v in circuit:
         nodes.append(u)
     # Close the loop
-    nodes.append(circuit[0][0])
+    if nodes:
+        nodes.append(circuit[0][0])
     return nodes
+
 
 def chinese_postman_paths(graph, n=5):
     """
-    Given a graph, return a list of node id's forming the shortest chinese postman path.
+    Find the n best Chinese Postman paths for a graph.
+
+    Args:
+        graph: Input graph.
+        n: Number of paths to find.
+
+    Returns:
+        List of tuples: (eulerian_graph, nodes) for each path.
     """
-
-    # Find all the nodes with an odd degree, and create a graph containing only them
     odd = odd_graph(graph)
-
-    # Find the best matching of pairs of odd nodes
     matchings = find_matchings(odd, n)
 
     paths = []
     for cost, matching in matchings[:n]:
-        # Copy the original graph to a multigraph (so we can add more edges between the same nodes)
         eulerian_graph = build_eulerian_graph(graph, odd, matching)
-
-        # Now that we have an eulerian graph, we can calculate the eulerian circuit
         nodes = eulerian_circuit(eulerian_graph)
-
         paths.append((eulerian_graph, nodes))
+    
     return paths
 
 
 def single_chinese_postman_path(graph):
     """
-    Given a graph, return a list of node id's forming the shortest chinese postman path.
+    Find the shortest Chinese Postman path for a graph.
 
-    If we assume V' (number of nodes with odd degree) is at least some constant fraction of V (total number of nodes),
-    say 10%, the overall complexity is O(V^3).
+    Args:
+        graph: Input graph.
+
+    Returns:
+        Tuple: (eulerian_graph, nodes) for the optimal path.
+
+    Notes:
+        If V' (number of odd-degree nodes) is at least 10% of V (total nodes),
+        the complexity is approximately O(V^3).
     """
-
-    # Build a fully-connected graph containing only the odd edges.  Complexity: O(V'*(E + V log(V)) )
     odd = odd_graph(graph)
-
-    # Find the best matching of pairs of odd nodes. Complexity: O(V'^3)
-    matching = nx.max_weight_matching(odd, True)
-
-    # Complexity of the remainder is less approximately O(E)
+    matching = nx.max_weight_matching(odd, maxcardinality=True)
     eulerian_graph = build_eulerian_graph(graph, odd, matching)
     nodes = eulerian_circuit(eulerian_graph)
-
     return eulerian_graph, nodes
 
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="input CSV file", type=argparse.FileType('r'))
-    parser.add_argument("--gpx", help="GPX output file", type=argparse.FileType('w'))
+    
+    parser = argparse.ArgumentParser(
+        description="Solve the Chinese Postman Problem for a graph given as a CSV file."
+    )
+    parser.add_argument("input", help="Input CSV file", type=argparse.FileType('r'))
     parser.add_argument("--csv", help="CSV output file", type=argparse.FileType('w'))
+    parser.add_argument("--gpx", help="GPX output file", type=argparse.FileType('w'))
     parser.add_argument("--png", help="PNG output file", type=argparse.FileType('wb'))
     args = parser.parse_args()
 
     graph = import_csv_graph(args.input)
     components = graph_components(graph)
-    if len(components) == 0:
+    
+    if not components:
         raise ValueError("No graph components found; check input file")
 
     # Only use the largest component
@@ -383,24 +479,23 @@ if __name__ == '__main__':
     paths = chinese_postman_paths(component, n=5)
 
     for eulerian_graph, nodes in paths:
-
-        in_length = edge_sum(graph)/1000.0
-        path_length = edge_sum(eulerian_graph)/1000.0
+        in_length = edge_sum(component) / 1000.0
+        path_length = edge_sum(eulerian_graph) / 1000.0
         duplicate_length = path_length - in_length
 
-        print("Total length of roads: %.3f km" % in_length)
-        print("Total length of path: %.3f km" % path_length)
-        print("Length of sections visited twice: %.3f km" % duplicate_length)
-        print("Node sequence:", nodes)
+        print(f"Total length of roads: {in_length:.3f} km")
+        print(f"Total length of path: {path_length:.3f} km")
+        print(f"Length of sections visited twice: {duplicate_length:.3f} km")
+        print(f"Node sequence: {nodes}")
         print()
 
-    eulerian_graph, nodes = paths[0]    # The best one
+    eulerian_graph, nodes = paths[0]  # The best one
 
     if args.gpx:
-        args.gpx.write(as_gpx(graph, [{'points': nodes}]))
+        args.gpx.write(as_gpx(component, [{'points': nodes}]))
 
     if args.csv:
-        write_csv(graph, nodes, args.csv)
+        write_csv(component, nodes, args.csv)
 
     if args.png:
         specify_positions(eulerian_graph)

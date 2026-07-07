@@ -1,0 +1,13 @@
+# Requirements for Chinese Postman Solver
+# Python 3.8+ required
+
+# Core dependencies
+networkx>=2.8
+
+# Optional dependencies for PNG export (at least one required)
+# pygraphviz>=1.7  # Preferred for PNG export
+# pydot>=1.4.2     # Alternative for PNG export
+# pydotplus>=2.0.2 # Alternative for PNG export
+
+# For development/testing
+packaging>=20.0
