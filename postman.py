@@ -600,8 +600,14 @@ def number_path_segments(graph, nodes):
     """
     numbered_edges = []
     for i, (u, v) in enumerate(pairs(nodes, circular=False), start=1):
-        edge_data = graph.edges[u, v]
-        numbered_edges.append((u, v, edge_data, i))
+        # Handle both Graph and MultiGraph
+        if graph.has_edge(u, v):
+            # For MultiGraph, get the first edge data
+            if isinstance(graph, nx.MultiGraph):
+                edge_data = graph.edges[u, v, 0]
+            else:
+                edge_data = graph.edges[u, v]
+            numbered_edges.append((u, v, edge_data, i))
     return numbered_edges
 
 
