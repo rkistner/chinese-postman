@@ -1,45 +1,25 @@
-#!/usr/bin/env python2.7
-from __future__ import print_function
+#!/usr/bin/env python3
 import os
-import sys
 import tempfile
 import subprocess
 
 __author__ = 'Ralf Kistner'
 
-# Use the bundled networkx egg
-if __name__ == '__main__':
-    nxegg = 'lib/networkx-1.7-py2.7.egg'
-else:
-    nxegg = os.path.join(os.path.dirname(__file__), 'lib/networkx-1.7-py2.7.egg')
-sys.path.append(nxegg)
+# Requires NetworkX >= 2.4
 
 import csv
 import networkx as nx
 import xml.dom.minidom as minidom
 
-from distutils.version import LooseVersion
-
-if LooseVersion(nx.__version__) < LooseVersion('1.11'):
-    write_dot = nx.write_dot
-else:
+try:
+    import pygraphviz
+    from networkx.drawing.nx_agraph import write_dot
+except ImportError:
     try:
-        import pygraphviz
-        from networkx.drawing.nx_agraph import write_dot
+        import pydot
+        from networkx.drawing.nx_pydot import write_dot
     except ImportError:
-        try:
-            if LooseVersion(nx.__version__) == LooseVersion('1.11'):
-                import pydotplus
-            else:
-                import pydot
-            from networkx.drawing.nx_pydot import write_dot
-        except ImportError:
-            from networkx.drawing.nx_agraph import write_dot
-
-# Below constant is for changes introduced in NetworkX 2.1rc1, but
-# LooseVersion thinks '2.1rc1' is higher than '2.1'. Change to '2.1rc1'
-# when switching to pkg_resources.parse_version/packaging.version.parse.
-_NX_BELOW_2_DOT_1 = (LooseVersion(nx.__version__) < LooseVersion('2.1'))
+        from networkx.drawing.nx_agraph import write_dot
 
 def pairs(lst, circular=False):
     """
@@ -89,10 +69,10 @@ def import_csv_graph(file):
             graph.add_edge(start_node, end_node, weight=length, id=id, label=id)
 
             # We keep the GPS coordinates as strings
-            graph.node[start_node]['longitude'] = start_lon
-            graph.node[start_node]['latitude'] = start_lat
-            graph.node[end_node]['longitude'] = end_lon
-            graph.node[end_node]['latitude'] = end_lat
+            graph.nodes[start_node]['longitude'] = start_lon
+            graph.nodes[start_node]['latitude'] = start_lat
+            graph.nodes[end_node]['longitude'] = end_lon
+            graph.nodes[end_node]['latitude'] = end_lat
         except ValueError:
             print("Skipping input row %d" % (row_number+1))
 
@@ -109,7 +89,7 @@ def specify_positions(graph):
         longitude = data['longitude']
         y = (latitude - lat_min) / (lat_max - lat_min) * 1000
         x = (longitude - lon_min) / (lon_max - lon_min) * 1000
-        graph.node[node]['pos'] = "%d,%d" % (int(x), int(y))
+        graph.nodes[node]['pos'] = "%d,%d" % (int(x), int(y))
 
 
 
@@ -198,8 +178,8 @@ def as_gpx(graph, track_list, name=None):
         trkseg = doc.createElement("trkseg")
 
         for u in track['points']:
-            longitude = graph.node[u].get('longitude')
-            latitude = graph.node[u].get('latitude')
+            longitude = graph.nodes[u].get('longitude')
+            latitude = graph.nodes[u].get('latitude')
             trkpt = doc.createElement("trkpt")
             trkpt.setAttribute("lat", str(latitude))
             trkpt.setAttribute("lon", str(longitude))
@@ -219,10 +199,10 @@ def write_csv(graph, nodes, out):
     for u, v in pairs(nodes, False):
         length = graph[u][v]['weight']
         id = graph[u][v]['id']
-        start_latitude = graph.node[u].get('latitude')
-        start_longitude = graph.node[u].get('longitude')
-        end_latitude = graph.node[v].get('latitude')
-        end_longitude = graph.node[v].get('longitude')
+        start_latitude = graph.nodes[u].get('latitude')
+        start_longitude = graph.nodes[u].get('longitude')
+        end_latitude = graph.nodes[v].get('latitude')
+        end_longitude = graph.nodes[v].get('longitude')
         writer.writerow([u, v, length, id, start_longitude, start_latitude, end_longitude, end_latitude])
 
 def edge_sum(graph):
@@ -234,9 +214,7 @@ def edge_sum(graph):
 def matching_cost(graph, matching):
     # Calculate the cost of the additional edges
     cost = 0
-    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
-        if _NX_BELOW_2_DOT_1 and (v <= u):
-            continue
+    for u, v in matching:
         data = graph[u][v]
         cost += abs(data['weight'])
     return cost
@@ -256,9 +234,7 @@ def find_matchings(graph, n=5):
     best_matching = nx.max_weight_matching(graph, True)
     matchings = [best_matching]
 
-    for u, v in (best_matching.items() if _NX_BELOW_2_DOT_1 else best_matching):
-        if _NX_BELOW_2_DOT_1 and (v <= u):
-            continue
+    for u, v in best_matching:
         # Remove the matching
         smaller_graph = nx.Graph(graph)
         smaller_graph.remove_edge(u, v)
@@ -292,10 +268,7 @@ def build_eulerian_graph(graph, odd, matching):
     eulerian_graph = nx.MultiGraph(graph)
 
     # For each matched pair of odd vertices, connect them with the shortest path between them
-    for u, v in (matching.items() if _NX_BELOW_2_DOT_1 else matching):
-        if _NX_BELOW_2_DOT_1 and (v <= u):
-            # With max_weight_matching of NetworkX <2.1 each matching occurs twice in the matchings: (u => v) and (v => u). We only count those where v > u
-            continue
+    for u, v in matching:
         edge = odd[u][v]
         path = edge['path']  # The shortest path between the two nodes, calculated in odd_graph()
 

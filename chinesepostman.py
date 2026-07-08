@@ -18,23 +18,32 @@
  *                                                                         *
  ***************************************************************************/
 """
-from __future__ import absolute_import
-
 # To reload this plugin after modifying, run:
 # qgis.utils.reloadPlugin('chinesepostman')
 
-from builtins import object
+import os
+
 from . import postman
 
-# Import the PyQt and QGIS libraries
-from qgis.PyQt.QtCore import QObject, QSettings
+# Import the PyQt and QGIS libraries.
+# In Qt6, QAction moved from QtWidgets to QtGui, but the qgis.PyQt
+# compatibility layer re-exports it from QtWidgets on both Qt5 and Qt6.
+from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 from qgis.PyQt.QtGui import QIcon
-from qgis.core import QgsWkbTypes, QgsApplication, QgsProject, QgsSymbol, QgsSingleSymbolRenderer, QgsFeature, QgsMapLayer, QgsVectorLayer, QgsPointXY, QgsGeometry, QgsDistanceArea, QgsSymbolLayerRegistry
+from qgis.core import Qgis, QgsWkbTypes, QgsApplication, QgsProject, QgsSymbol, QgsSingleSymbolRenderer, QgsFeature, QgsMapLayer, QgsVectorLayer, QgsPointXY, QgsGeometry, QgsDistanceArea
 import networkx as nx
 
-# We need to import resources, even though we don't use it directly
-from . import resources
+try:
+    # QGIS >= 3.30 (including QGIS 4, where the old enums were removed)
+    VECTOR_LAYER_TYPE = Qgis.LayerType.Vector
+    LINE_GEOMETRY_TYPE = Qgis.GeometryType.Line
+except AttributeError:
+    # QGIS < 3.30
+    VECTOR_LAYER_TYPE = QgsMapLayer.VectorLayer
+    LINE_GEOMETRY_TYPE = QgsWkbTypes.LineGeometry
+
+ICON_PATH = os.path.join(os.path.dirname(__file__), "icon.png")
 
 class ChinesePostman(object):
 
@@ -44,7 +53,7 @@ class ChinesePostman(object):
 
     def initGui(self):
         # Create action that will start plugin configuration
-        self.action = QAction(QIcon(":/plugins/chinesepostman/icon.png"), \
+        self.action = QAction(QIcon(ICON_PATH), \
             "Chinese Postman", self.iface.mainWindow())
         # connect the action to the run method
         self.action.triggered.connect(self.run)
@@ -69,12 +78,12 @@ class ChinesePostman(object):
                                                              layerHint)
             return
 
-        if layer.type() != QgsMapLayer.VectorLayer:
+        if layer.type() != VECTOR_LAYER_TYPE:
             QMessageBox.information(None, "Chinese Postman", "The selected layer is not of type Vector." +
                                                              layerHint)
             return
 
-        if layer.geometryType() != QgsWkbTypes.LineGeometry:
+        if layer.geometryType() != LINE_GEOMETRY_TYPE:
             QMessageBox.information(None, "Chinese Postman", "The selected layer's geometry type is not Line. " +
                                                              "Chinese Postman cannot work on Point or Polygon." +
                                                              layerHint)

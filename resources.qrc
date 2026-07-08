@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/chinesepostman" >
-        <file>icon.png</file>
-    </qresource>
-</RCC>

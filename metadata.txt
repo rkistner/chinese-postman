@@ -10,13 +10,17 @@
 [general]
 name=Chinese Postman Solver
 description=Chinese Postman Solver
-version=0.3.0
+version=0.4.0
 qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
+supportsQt6=True
 author=Ralf Kistner
 email=ralf.kistner@gmail.com
 
 about=Chinese Postman Solver solves the Chinese Postman problem, also
     known as CPP, postman tour or route inspection problem.
+    Requires the NetworkX (>= 2.4) Python library. Recent QGIS builds
+    bundle it; otherwise see the README for install instructions.
 
 tracker=https://github.com/rkistner/chinese-postman/issues
 repository=https://github.com/rkistner/chinese-postman
@@ -24,8 +28,9 @@ repository=https://github.com/rkistner/chinese-postman
 
 # Recommended items:
 
-# Uncomment the following line and add your changelog:
-# changelog=
+changelog=0.4.0
+    - Support QGIS 4 / Qt6 (keeps compatibility with QGIS 3)
+    - Require NetworkX >= 2.4; drop bundled Python 2 NetworkX egg
 
 # Tags are comma separated with spaces allowed
 tags=routing,network analysis,shortest

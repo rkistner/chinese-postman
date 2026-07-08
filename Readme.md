@@ -2,21 +2,42 @@
 
 This is a Python program to solve the [Chinese postman problem](http://en.wikipedia.org/wiki/Route_inspection_problem).
 
-## Usage with QGIS
+## Installation (QGIS 3.x and 4.x)
 
-
-## Installation (QGIS 3.x)
-
-Python 3.x and QGIS 3.x is required for the plugin to run.
+QGIS 3.x or 4.x is required for the plugin to run, with
+[NetworkX](https://networkx.org/) >= 2.4 available to the QGIS Python
+interpreter.
 
 Download the "Chinese Postman Solver", using the QGIS plugin manager.
 
-## Manual Installation - Linux / OSX
+### Installing NetworkX into QGIS
+
+The plugin runs inside QGIS's own Python interpreter, so NetworkX must be
+installed there — installing it into your system Python has no effect. Recent
+QGIS 4 builds already bundle NetworkX. To check, run `import networkx` in the
+QGIS Python Console (Plugins → Python Console); if it succeeds, you are done.
+
+If it fails, install NetworkX into QGIS's Python and restart QGIS:
+
+* **Any platform**: in the QGIS Python Console, run
+  `import pip; pip.main(['install', 'networkx'])`
+* **Windows**: alternatively, open the "OSGeo4W Shell" installed alongside
+  QGIS and run `python -m pip install networkx`
+* **Linux**: alternatively, install your distribution's package, e.g.
+  `sudo apt install python3-networkx`
+
+## Manual Installation - Linux / macOS
 
 1. Clone this repository.
-2. Run `./install.sh`.
+2. Run `./install.sh`. This symlinks the repository into the plugin directory
+   of every QGIS 3/4 profile found, under the name `chinesepostman`.
+3. Restart QGIS and enable "Chinese Postman Solver" in
+   Plugins → Manage and Install Plugins → Installed.
 
-Alternatively, run `./bundle.sh`, and install the generated zip file as a plugin.
+Alternatively, run `./bundle.sh` and install the generated `chinesepostman.zip`
+via Plugins → Manage and Install Plugins → Install from ZIP. (Do not zip the
+repository with the Finder's "Compress" — it adds `__MACOSX` metadata and uses
+the repository folder name, neither of which QGIS can load.)
 
 ## Usage in QGIS
 
@@ -30,14 +51,11 @@ It should create a new layer with the results.
 
 Requirements:
 
-* Python2.7 or Python 3.x
-* [NetworkX](https://networkx.github.io/)>=2.4
+* Python 3.x
+* [NetworkX](https://networkx.org/)>=2.4
 * Optionally, if you want to export PNG images from the command line (not needed for using the QGIS-plugin):
   * [Graphviz](https://graphviz.org/), and
-  * One of:
-    * For all NetworkX versions except 1.10: [PyGraphviz](https://pygraphviz.github.io/) (preferred), or
-    * For NetworkX <=1.10 and >=2.0: [pydot](https://github.com/pydot/pydot), or
-    * For NetworkX 1.10 and 1.11: [PyDotPlus](https://pydotplus.readthedocs.io/)
+  * [PyGraphviz](https://pygraphviz.github.io/) (preferred) or [pydot](https://github.com/pydot/pydot)
 
 
 Input data file must be in CSV format, with each row containing the following columns:
@@ -69,6 +87,24 @@ Use option `--png` to create a graph visualization of the route in PNG image for
 
     python postman.py --csv path.csv --gpx path.gpx --png path.png input.csv
 
+
+## Releasing to the QGIS plugin repository
+
+1. Bump `version` and update `changelog` in `metadata.txt`.
+2. Run `./bundle.sh` to build `chinesepostman.zip`.
+3. Upload the zip at <https://plugins.qgis.org/plugins/> (My Plugins →
+   Chinese Postman Solver → Add version).
+
+`metadata.txt` already declares `supportsQt6=True` and
+`qgisMaximumVersion=4.99`, so uploaded versions are installable on both
+QGIS 3.x and 4.x.
+
+## Contributors
+
+* [Ralf Kistner](https://github.com/rkistner) — author and maintainer
+* [Peter Nowee](https://github.com/peternowee)
+* [SS7CPhilip](https://github.com/SS7CPhilip)
+* [Mike Dezube](https://github.com/mdezube) — QGIS 4 / Qt6 port
 
 ## License
 

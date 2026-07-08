@@ -6,5 +6,5 @@
 *.pyc
 *.osm
 *~
-
-resources.py
+.DS_Store
+__pycache__/
