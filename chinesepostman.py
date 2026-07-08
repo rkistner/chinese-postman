@@ -292,7 +292,7 @@ class ChinesePostman(QObject):
         # Get the CRS from the map canvas
         crs = self.iface.mapCanvas().mapSettings().destinationCrs()
         new_layer = build_layer_with_labels(
-            self.component, nodes, crs, number_segments, self.node_mapping
+            eulerian_graph, nodes, crs, number_segments, self.node_mapping
         )
         symbol = build_symbol(new_layer)
         new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
@@ -500,7 +500,7 @@ class ChinesePostman(QObject):
             duplicate_length = path_length - in_length
 
             new_layer = build_layer_with_labels(
-                component, nodes, layer.crs(), number_segments, node_mapping
+                eulerian_graph, nodes, layer.crs(), number_segments, node_mapping
             )
             symbol = build_symbol(new_layer)
             new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
