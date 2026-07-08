@@ -41,17 +41,21 @@ class StartEndDialog(QDialog):
     Dialog for selecting start and end nodes for an open path.
     """
     
-    def __init__(self, nodes, parent=None):
+    def __init__(self, node_labels, parent=None):
+        """
+        Args:
+            node_labels: List of human-readable node labels (e.g., ['Node 1', 'Node 2'])
+        """
         super().__init__(parent)
         self.setWindowTitle("Select Start and End Points")
         self.setLayout(QVBoxLayout())
-        self.nodes = nodes
+        self.node_labels = node_labels
         
         # Start node selection
         start_layout = QHBoxLayout()
         start_layout.addWidget(QLabel("Start Node:"))
         self.start_combo = QComboBox()
-        self.start_combo.addItems(sorted(nodes))
+        self.start_combo.addItems(sorted(node_labels))
         start_layout.addWidget(self.start_combo)
         self.layout().addLayout(start_layout)
         
@@ -59,7 +63,7 @@ class StartEndDialog(QDialog):
         end_layout = QHBoxLayout()
         end_layout.addWidget(QLabel("End Node:"))
         self.end_combo = QComboBox()
-        self.end_combo.addItems(sorted(nodes))
+        self.end_combo.addItems(sorted(node_labels))
         end_layout.addWidget(self.end_combo)
         self.layout().addLayout(end_layout)
         
@@ -87,7 +91,7 @@ class StartEndDialog(QDialog):
             self.end_combo.setEnabled(True)
     
     def get_selection(self):
-        """Return the selected start and end nodes."""
+        """Return the selected start and end node labels."""
         start = self.start_combo.currentText()
         if self.closed_check.isChecked():
             return start, start
@@ -189,7 +193,8 @@ class ChinesePostman(QObject):
             )
             return
 
-        graph = build_graph(features)
+        # Build graph with human-readable node labels
+        graph, node_mapping = build_graph_with_labels(features)
         components = postman.graph_components(graph)
         
         if len(components) > 1:
@@ -209,6 +214,16 @@ class ChinesePostman(QObject):
             return
 
         component = components[0]
+        
+        # Create a subgraph with the component and its node mapping
+        # We need to map the component nodes back to the original graph's labels
+        component_node_labels = []
+        for node in component.nodes():
+            if node in node_mapping:
+                component_node_labels.append(node_mapping[node])
+            else:
+                # Fallback for nodes not in mapping (shouldn't happen)
+                component_node_labels.append(str(node))
 
         # Ask user if they want to specify start and end points
         reply = QMessageBox.question(
@@ -222,28 +237,51 @@ class ChinesePostman(QObject):
         )
 
         if reply == QMessageBox.Yes:
-            # Get node list for the dialog
-            nodes = [str(n) for n in component.nodes()]
-            if not nodes:
+            if not component_node_labels:
                 QMessageBox.warning(None, "Chinese Postman", "No nodes found in the graph.")
                 return
             
-            dialog = StartEndDialog(nodes)
+            dialog = StartEndDialog(component_node_labels)
             if dialog.exec_() == QDialog.Accepted:
-                start_node, end_node = dialog.get_selection()
+                start_label, end_label = dialog.get_selection()
+                
+                # Map labels back to actual node identifiers
+                # Find the nodes that have these labels
+                start_node = None
+                end_node = None
+                
+                for node, label in node_mapping.items():
+                    if label == start_label:
+                        start_node = node
+                        break
+                
+                for node, label in node_mapping.items():
+                    if label == end_label:
+                        end_node = node
+                        break
+                
+                if start_node is None or end_node is None:
+                    QMessageBox.warning(None, "Chinese Postman", "Could not find selected nodes in graph.")
+                    return
+                
                 try:
                     eulerian_graph, nodes = postman.chinese_postman_path_with_start_end(
                         component, start_node, end_node
                     )
+                    # Map nodes back to labels for display
+                    nodes = [node_mapping.get(node, str(node)) for node in nodes]
                 except ValueError as e:
                     QMessageBox.warning(None, "Chinese Postman", str(e))
                     # Fall back to standard path
                     eulerian_graph, nodes = postman.single_chinese_postman_path(component)
+                    nodes = [node_mapping.get(node, str(node)) for node in nodes]
             else:
                 return  # User cancelled
         else:
             # Standard closed circuit
             eulerian_graph, nodes = postman.single_chinese_postman_path(component)
+            # Map nodes back to labels for display
+            nodes = [node_mapping.get(node, str(node)) for node in nodes]
 
         # Ask if user wants to number the segments
         reply = QMessageBox.question(
@@ -259,7 +297,8 @@ class ChinesePostman(QObject):
         path_length = postman.edge_sum(eulerian_graph) / 1000.0
         duplicate_length = path_length - in_length
 
-        new_layer = build_layer(eulerian_graph, nodes, layer.crs(), number_segments)
+        # Build the layer with the original graph (for coordinate lookup)
+        new_layer = build_layer_with_labels(graph, nodes, layer.crs(), number_segments, node_mapping)
         symbol = build_symbol(new_layer)
         new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
         
@@ -278,6 +317,179 @@ class ChinesePostman(QObject):
         info += "(If the above values do not make sense, consider changing CRS.)\n"
 
         QMessageBox.information(None, "Chinese Postman", info)
+
+
+def build_graph_with_labels(features):
+    """
+    Build a NetworkX graph from QGIS features with human-readable node labels.
+    
+    Args:
+        features: List of QgsFeature objects (line features).
+    
+    Returns:
+        Tuple: (graph, node_mapping) where:
+            - graph: nx.Graph with coordinate tuples as nodes
+            - node_mapping: Dict mapping coordinate tuples to human-readable labels
+    """
+    d = QgsDistanceArea()
+    graph = nx.Graph()
+    node_mapping = {}  # Maps (x, y) tuples to human-readable labels
+    node_counter = 1
+    
+    for feature in features:
+        geom = feature.geometry()
+        geom_single_type = QgsWkbTypes.isSingleType(geom.wkbType())
+        
+        if geom_single_type:
+            # Single part geometry
+            nodes = geom.asPolyline()
+            for start, end in postman.pairs(nodes):
+                length = d.measureLine(start, end)
+                start_node = (start.x(), start.y())
+                end_node = (end.x(), end.y())
+                
+                # Add nodes to graph if not already present
+                if start_node not in node_mapping:
+                    node_mapping[start_node] = f"Node {node_counter}"
+                    node_counter += 1
+                if end_node not in node_mapping:
+                    node_mapping[end_node] = f"Node {node_counter}"
+                    node_counter += 1
+                
+                graph.add_edge(start_node, end_node, weight=length)
+        else:
+            # Multi-part geometry
+            lines = geom.asMultiPolyline()
+            for line in lines:
+                for start, end in postman.pairs(line):
+                    length = d.measureLine(start, end)
+                    start_node = (start.x(), start.y())
+                    end_node = (end.x(), end.y())
+                    
+                    # Add nodes to graph if not already present
+                    if start_node not in node_mapping:
+                        node_mapping[start_node] = f"Node {node_counter}"
+                        node_counter += 1
+                    if end_node not in node_mapping:
+                        node_mapping[end_node] = f"Node {node_counter}"
+                        node_counter += 1
+                    
+                    graph.add_edge(start_node, end_node, weight=length)
+
+    return graph, node_mapping
+
+
+def build_layer_with_labels(graph, nodes, crs, number_segments=False, node_mapping=None):
+    """
+    Build a QGIS vector layer from the Eulerian path with human-readable labels.
+    
+    Args:
+        graph: nx.MultiGraph with coordinate tuples as nodes.
+        nodes: List of node labels (human-readable) in the path.
+        crs: QgsCoordinateReferenceSystem for the layer.
+        number_segments: If True, create separate features for each segment with order number.
+        node_mapping: Dict mapping coordinate tuples to human-readable labels.
+    
+    Returns:
+        QgsVectorLayer: Layer containing the path.
+    """
+    # Disable CRS prompting to set CRS without user interaction
+    s = QSettings()
+    old_validation = s.value("/Projections/defaultBehaviour", "useGlobal")
+    s.setValue("/Projections/defaultBehaviour", "useGlobal")
+
+    if number_segments:
+        # Create a layer with separate features for each segment
+        vl = QgsVectorLayer("LineString", "chinese_postman", "memory")
+        vl.setCrs(crs)
+        pr = vl.dataProvider()
+        
+        # Add fields for segment attributes
+        pr.addAttributes([
+            QgsField("order", QVariant.Int),
+            QgsField("start_node", QVariant.String),
+            QgsField("end_node", QVariant.String),
+            QgsField("length", QVariant.Double),
+        ])
+        vl.updateFields()
+        
+        # Map labels back to coordinate tuples for path processing
+        reverse_mapping = {v: k for k, v in node_mapping.items()} if node_mapping else {}
+        coordinate_nodes = []
+        for label in nodes:
+            if label in reverse_mapping:
+                coordinate_nodes.append(reverse_mapping[label])
+            else:
+                coordinate_nodes.append(label)
+        
+        # Number the segments and create features
+        numbered_edges = postman.number_path_segments(graph, coordinate_nodes)
+        for u, v, edge_data, order in numbered_edges:
+            # Get coordinates
+            if isinstance(u, tuple) and len(u) >= 2:
+                start_point = QgsPointXY(u[0], u[1])
+                start_label = node_mapping.get(u, str(u))
+            else:
+                start_point = QgsPointXY(0, 0)
+                start_label = str(u)
+            
+            if isinstance(v, tuple) and len(v) >= 2:
+                end_point = QgsPointXY(v[0], v[1])
+                end_label = node_mapping.get(v, str(v))
+            else:
+                end_point = QgsPointXY(0, 0)
+                end_label = str(v)
+            
+            # Create segment geometry
+            geometry = QgsGeometry.fromPolylineXY([start_point, end_point])
+            fet = QgsFeature()
+            fet.setGeometry(geometry)
+            
+            # Set attributes
+            fet.setAttributes([
+                order,
+                start_label,
+                end_label,
+                edge_data.get('weight', 0),
+            ])
+            pr.addFeatures([fet])
+    else:
+        # Original behavior: single polyline for the entire path
+        vl = QgsVectorLayer("LineString", "chinese_postman", "memory")
+        vl.setCrs(crs)
+        pr = vl.dataProvider()
+
+        # Map labels back to coordinate tuples
+        reverse_mapping = {v: k for k, v in node_mapping.items()} if node_mapping else {}
+        coordinate_nodes = []
+        for label in nodes:
+            if label in reverse_mapping:
+                coordinate_nodes.append(reverse_mapping[label])
+            else:
+                coordinate_nodes.append(label)
+
+        # Extract coordinates from the graph nodes
+        points = []
+        for node in coordinate_nodes:
+            if isinstance(node, tuple) and len(node) >= 2:
+                points.append(QgsPointXY(node[0], node[1]))
+            else:
+                points.append(QgsPointXY(0, 0))
+
+        # Create a polyline feature
+        if points:
+            geometry = QgsGeometry.fromPolylineXY(points)
+            fet = QgsFeature()
+            fet.setGeometry(geometry)
+            pr.addFeatures([fet])
+
+    # Restore original CRS behavior
+    s.setValue("/Projections/defaultBehaviour", old_validation)
+
+    # Update layer's extent
+    vl.updateExtents()
+
+    return vl
 
 
 def build_symbol(layer):
@@ -335,141 +547,3 @@ def build_symbol(layer):
     symbol.appendSymbolLayer(marker_layer)
     
     return symbol
-
-
-def build_layer(graph, nodes, crs, number_segments=False):
-    """
-    Build a QGIS vector layer from the Eulerian path.
-
-    Args:
-        graph: nx.MultiGraph with node coordinates.
-        nodes: List of node IDs in the path.
-        crs: QgsCoordinateReferenceSystem for the layer.
-        number_segments: If True, create separate features for each segment with order number.
-
-    Returns:
-        QgsVectorLayer: Layer containing the path.
-    """
-    # Disable CRS prompting to set CRS without user interaction
-    s = QSettings()
-    old_validation = s.value("/Projections/defaultBehaviour", "useGlobal")
-    s.setValue("/Projections/defaultBehaviour", "useGlobal")
-
-    if number_segments:
-        # Create a layer with separate features for each segment
-        vl = QgsVectorLayer("LineString", "chinese_postman", "memory")
-        vl.setCrs(crs)
-        pr = vl.dataProvider()
-        
-        # Add fields for segment attributes
-        pr.addAttributes([
-            QgsField("order", QVariant.Int),
-            QgsField("start_node", QVariant.String),
-            QgsField("end_node", QVariant.String),
-            QgsField("length", QVariant.Double),
-            QgsField("segment_id", QVariant.String)
-        ])
-        vl.updateFields()
-        
-        # Number the segments and create features
-        numbered_edges = postman.number_path_segments(graph, nodes)
-        for u, v, edge_data, order in numbered_edges:
-            # Get coordinates
-            if isinstance(u, tuple) and len(u) >= 2:
-                start_point = QgsPointXY(u[0], u[1])
-            else:
-                node_data = graph.nodes[u]
-                start_point = QgsPointXY(node_data.get('longitude', 0), node_data.get('latitude', 0))
-            
-            if isinstance(v, tuple) and len(v) >= 2:
-                end_point = QgsPointXY(v[0], v[1])
-            else:
-                node_data = graph.nodes[v]
-                end_point = QgsPointXY(node_data.get('longitude', 0), node_data.get('latitude', 0))
-            
-            # Create segment geometry
-            geometry = QgsGeometry.fromPolylineXY([start_point, end_point])
-            fet = QgsFeature()
-            fet.setGeometry(geometry)
-            
-            # Set attributes
-            fet.setAttributes([
-                order,
-                str(u),
-                str(v),
-                edge_data.get('weight', 0),
-                edge_data.get('id', '')
-            ])
-            pr.addFeatures([fet])
-    else:
-        # Original behavior: single polyline for the entire path
-        vl = QgsVectorLayer("LineString", "chinese_postman", "memory")
-        vl.setCrs(crs)
-        pr = vl.dataProvider()
-
-        # Extract coordinates from the graph nodes
-        points = []
-        for node in nodes:
-            # Node can be a tuple (x, y) from QGIS geometry or a string ID from CSV
-            if isinstance(node, tuple) and len(node) >= 2:
-                points.append(QgsPointXY(node[0], node[1]))
-            else:
-                # For CSV-imported graphs, nodes are string IDs
-                node_data = graph.nodes[node]
-                lon = node_data.get('longitude', 0)
-                lat = node_data.get('latitude', 0)
-                points.append(QgsPointXY(lon, lat))
-
-        # Create a polyline feature
-        if points:
-            geometry = QgsGeometry.fromPolylineXY(points)
-            fet = QgsFeature()
-            fet.setGeometry(geometry)
-            pr.addFeatures([fet])
-
-    # Restore original CRS behavior
-    s.setValue("/Projections/defaultBehaviour", old_validation)
-
-    # Update layer's extent
-    vl.updateExtents()
-
-    return vl
-
-
-def build_graph(features):
-    """
-    Build a NetworkX graph from QGIS features.
-
-    Args:
-        features: List of QgsFeature objects (line features).
-
-    Returns:
-        nx.Graph: Graph with edges weighted by length.
-    """
-    d = QgsDistanceArea()
-    graph = nx.Graph()
-    
-    for feature in features:
-        geom = feature.geometry()
-        geom_single_type = QgsWkbTypes.isSingleType(geom.wkbType())
-        
-        if geom_single_type:
-            # Single part geometry
-            nodes = geom.asPolyline()
-            for start, end in postman.pairs(nodes):
-                length = d.measureLine(start, end)
-                # Use tuple of coordinates as node identifiers
-                start_node = (start.x(), start.y())
-                end_node = (end.x(), end.y())
-                graph.add_edge(start_node, end_node, weight=length)
-        else:
-            # Multi-part geometry
-            lines = geom.asMultiPolyline()
-            for line in lines:
-                for start, end in postman.pairs(line):
-                    length = d.measureLine(start, end)
-                    start_node = (start.x(), start.y())
-                    end_node = (end.x(), end.y())
-                    graph.add_edge(start_node, end_node, weight=length)
-
-    return graph
