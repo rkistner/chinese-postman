@@ -70,6 +70,9 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
         """
         Called when the user clicks on the map.
         Finds the closest node to the click position.
+        
+        Returns:
+            bool: True if a node was selected, False otherwise.
         """
         # Get the clicked point in map coordinates
         point = self.toMapCoordinates(event.pos())
@@ -95,6 +98,7 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
             self.node_selected.emit(closest_node)
             # Show a temporary marker (optional)
             self._show_temporary_marker(point)
+            return True
         else:
             # No node found within tolerance
             QMessageBox.warning(
@@ -102,8 +106,7 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
                 "Chinese Postman",
                 f"No node found within {self.tolerance} units. Try clicking closer to a node."
             )
-        
-        return True
+            return False
     
     def _show_temporary_marker(self, point):
         """Show a temporary marker at the clicked position."""
@@ -226,7 +229,10 @@ class ChinesePostman(QObject):
         
         # Clean up selection tool if it exists
         if self.selection_tool:
-            self.iface.mapCanvas().unsetMapTool(self.selection_tool)
+            try:
+                self.iface.mapCanvas().unsetMapTool(self.selection_tool)
+            except:
+                pass
             self.selection_tool = None
         
         del self.action
@@ -248,7 +254,10 @@ class ChinesePostman(QObject):
             # Second selection: end node
             self.selected_end = node
             # Deactivate the tool
-            self.iface.mapCanvas().unsetMapTool(self.selection_tool)
+            try:
+                self.iface.mapCanvas().unsetMapTool(self.selection_tool)
+            except:
+                pass
             self.selection_tool = None
             
             # Process the selection
@@ -288,9 +297,10 @@ class ChinesePostman(QObject):
         path_length = postman.edge_sum(eulerian_graph) / 1000.0
         duplicate_length = path_length - in_length
 
+        # Get the CRS from the map canvas
+        crs = self.iface.mapCanvas().mapSettings().destinationCrs()
         new_layer = build_layer_with_labels(
-            self.component, nodes, self.iface.mapCanvas().mapSettings().destinationCrs(), 
-            number_segments, self.node_mapping
+            self.component, nodes, crs, number_segments, self.node_mapping
         )
         symbol = build_symbol(new_layer)
         new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
