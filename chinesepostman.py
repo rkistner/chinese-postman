@@ -615,13 +615,16 @@ def build_layer_with_labels(graph, nodes, crs, number_segments=False, node_mappi
         vl.setCrs(crs)
         pr = vl.dataProvider()
         
-        # Add fields for segment attributes
-        pr.addAttributes([
+        # Add fields for segment attributes - Use QgsField with type name for QGIS 3.x+
+        # QgsField(name, type=QVariant.Int, typeName="integer") is deprecated in favor of QgsField(name, QVariant.Int)
+        # But to avoid warnings, we use the new API: QgsField(name, type)
+        fields = [
             QgsField("order", QVariant.Int),
             QgsField("start_node", QVariant.String),
             QgsField("end_node", QVariant.String),
             QgsField("length", QVariant.Double),
-        ])
+        ]
+        pr.addAttributes(fields)
         vl.updateFields()
         
         # Map labels back to coordinate tuples for path processing
