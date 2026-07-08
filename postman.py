@@ -522,9 +522,12 @@ def chinese_postman_path_with_start_end(graph, start=None, end=None):
     if start is not None and end is not None:
         # Force start and end to be odd-degree nodes in the odd graph
         # by adding them if they're not already there
+        # FIX: Copy the list of nodes before iterating to avoid RuntimeError
+        existing_odd_nodes = list(odd.nodes())
+        
         if start not in odd.nodes():
-            # Add start node to odd graph with zero-weight edges to all other odd nodes
-            for node in odd.nodes():
+            # Add start node to odd graph with edges to all existing odd nodes
+            for node in existing_odd_nodes:
                 if node != start:
                     # Find shortest path from start to node in original graph
                     try:
@@ -534,8 +537,11 @@ def chinese_postman_path_with_start_end(graph, start=None, end=None):
                     except nx.NetworkXNoPath:
                         pass
         
+        # Update the list of existing nodes after adding start
+        existing_odd_nodes = list(odd.nodes())
+        
         if end not in odd.nodes():
-            for node in odd.nodes():
+            for node in existing_odd_nodes:
                 if node != end:
                     try:
                         path = nx.shortest_path(graph, source=end, target=node, weight='weight')
@@ -564,10 +570,6 @@ def chinese_postman_path_with_start_end(graph, start=None, end=None):
                 end_matched = v
             elif v == end:
                 end_matched = u
-        
-        # If start and end are not matched together, we need to adjust the matching
-        # This is complex, so for now we'll just use the standard approach
-        # and let the user know that the start/end preference might not be respected
         
         # Build the Eulerian graph
         eulerian_graph = build_eulerian_graph(graph, odd, matching)
