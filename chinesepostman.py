@@ -8,12 +8,12 @@ Author: Ralf Kistner
 Modified for QGIS 4.x and Python 3.9+
 """
 
-from qgis.PyQt.QtCore import QObject, QSettings, QVariant
+from qgis.PyQt.QtCore import QObject, QSettings, QVariant, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import (
     QAction, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, 
     QLabel, QComboBox, QPushButton, QCheckBox
 )
-from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsWkbTypes,
     QgsApplication,
@@ -30,10 +30,90 @@ from qgis.core import (
     QgsSymbolLayerRegistry,
     Qgis,
 )
+from qgis.gui import QgsMapTool, QgsMapToolEmitPoint
 import networkx as nx
 
 from . import postman
 from . import resources
+
+
+class NodeSelectionTool(QgsMapToolEmitPoint):
+    """
+    Map tool for selecting nodes by clicking on the map.
+    Emits a signal when a node is selected.
+    """
+    
+    node_selected = pyqtSignal(object)  # Emits the selected node (coordinate tuple)
+    
+    def __init__(self, iface, graph, node_mapping):
+        """
+        Args:
+            iface: QGIS interface.
+            graph: NetworkX graph with coordinate tuples as nodes.
+            node_mapping: Dict mapping coordinate tuples to human-readable labels.
+        """
+        QgsMapToolEmitPoint.__init__(self, iface.mapCanvas())
+        self.iface = iface
+        self.graph = graph
+        self.node_mapping = node_mapping
+        self.d = QgsDistanceArea()
+        # Tolerance in map units (adjust based on your data)
+        # For projected CRS (meters), 10 meters is reasonable
+        # For geographic CRS (degrees), 0.0001 degrees (~10 meters) is reasonable
+        self.tolerance = 10  # Default tolerance in map units
+        
+    def set_tolerance(self, tolerance):
+        """Set the tolerance for node selection in map units."""
+        self.tolerance = tolerance
+        
+    def canvasReleaseEvent(self, event):
+        """
+        Called when the user clicks on the map.
+        Finds the closest node to the click position.
+        """
+        # Get the clicked point in map coordinates
+        point = self.toMapCoordinates(event.pos())
+        
+        # Find the closest node in the graph
+        closest_node = None
+        min_distance = float('inf')
+        
+        for node in self.graph.nodes():
+            if isinstance(node, tuple) and len(node) >= 2:
+                node_point = QgsPointXY(node[0], node[1])
+                try:
+                    distance = self.d.measureLine(point, node_point)
+                    if distance < min_distance and distance < self.tolerance:
+                        min_distance = distance
+                        closest_node = node
+                except:
+                    # Skip nodes that can't be measured (shouldn't happen)
+                    pass
+        
+        if closest_node is not None:
+            # Emit the signal with the selected node
+            self.node_selected.emit(closest_node)
+            # Show a temporary marker (optional)
+            self._show_temporary_marker(point)
+        else:
+            # No node found within tolerance
+            QMessageBox.warning(
+                None,
+                "Chinese Postman",
+                f"No node found within {self.tolerance} units. Try clicking closer to a node."
+            )
+        
+        return True
+    
+    def _show_temporary_marker(self, point):
+        """Show a temporary marker at the clicked position."""
+        # Create a temporary rubber band to show the selection
+        # This is optional but provides visual feedback
+        pass
+    
+    def deactivate(self):
+        """Clean up when the tool is deactivated."""
+        self.setActive(False)
 
 
 class StartEndDialog(QDialog):
@@ -113,6 +193,11 @@ class ChinesePostman(QObject):
         """
         super().__init__()
         self.iface = iface
+        self.component = None
+        self.node_mapping = None
+        self.selected_start = None
+        self.selected_end = None
+        self.selection_tool = None
 
     def initGui(self):
         """
@@ -138,7 +223,99 @@ class ChinesePostman(QObject):
         # Remove the plugin menu item and icon
         self.iface.removePluginMenu("&Chinese Postman", self.action)
         self.iface.removeToolBarIcon(self.action)
+        
+        # Clean up selection tool if it exists
+        if self.selection_tool:
+            self.iface.mapCanvas().unsetMapTool(self.selection_tool)
+            self.selection_tool = None
+        
         del self.action
+
+    def _on_node_selected(self, node):
+        """
+        Called when a node is selected on the map.
+        """
+        if self.selected_start is None:
+            # First selection: start node
+            self.selected_start = node
+            label = self.node_mapping.get(node, str(node))
+            QMessageBox.information(
+                None,
+                "Chinese Postman",
+                f"Start node selected: {label}.\nNow click on the END node."
+            )
+        else:
+            # Second selection: end node
+            self.selected_end = node
+            # Deactivate the tool
+            self.iface.mapCanvas().unsetMapTool(self.selection_tool)
+            self.selection_tool = None
+            
+            # Process the selection
+            self._process_selection()
+
+    def _process_selection(self):
+        """
+        Process the selected start and end nodes.
+        """
+        if self.component is None or self.node_mapping is None:
+            QMessageBox.warning(None, "Chinese Postman", "Graph data not available.")
+            return
+        
+        try:
+            eulerian_graph, nodes = postman.chinese_postman_path_with_start_end(
+                self.component, self.selected_start, self.selected_end
+            )
+            # Map nodes back to labels for display
+            nodes = [self.node_mapping.get(node, str(node)) for node in nodes]
+        except ValueError as e:
+            QMessageBox.warning(None, "Chinese Postman", str(e))
+            # Fall back to standard path
+            eulerian_graph, nodes = postman.single_chinese_postman_path(self.component)
+            nodes = [self.node_mapping.get(node, str(node)) for node in nodes]
+        
+        # Ask if user wants to number the segments
+        reply = QMessageBox.question(
+            None,
+            "Chinese Postman",
+            "Do you want to number the segments in the output layer?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+        number_segments = (reply == QMessageBox.Yes)
+
+        in_length = postman.edge_sum(self.component) / 1000.0
+        path_length = postman.edge_sum(eulerian_graph) / 1000.0
+        duplicate_length = path_length - in_length
+
+        new_layer = build_layer_with_labels(
+            self.component, nodes, self.iface.mapCanvas().mapSettings().destinationCrs(), 
+            number_segments, self.node_mapping
+        )
+        symbol = build_symbol(new_layer)
+        new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+        
+        QgsProject.instance().addMapLayer(new_layer)
+
+        info = ""
+        info += f"Total length of roads: {in_length:.3f} km\n"
+        info += f"Total length of path: {path_length:.3f} km\n"
+        info += f"Length of sections visited twice: {duplicate_length:.3f} km\n"
+        
+        if number_segments:
+            info += f"Number of segments: {len(nodes) - 1}\n"
+            info += "Segments are numbered in the output layer.\n"
+        
+        info += "\n"
+        info += "(If the above values do not make sense, consider changing CRS.)\n"
+
+        QMessageBox.information(None, "Chinese Postman", info)
+        
+        # Reset selection
+        self.selected_start = None
+        self.selected_end = None
+        self.component = None
+        self.node_mapping = None
 
     def run(self):
         """
@@ -215,108 +392,136 @@ class ChinesePostman(QObject):
 
         component = components[0]
         
-        # Create a subgraph with the component and its node mapping
-        # We need to map the component nodes back to the original graph's labels
-        component_node_labels = []
-        for node in component.nodes():
-            if node in node_mapping:
-                component_node_labels.append(node_mapping[node])
-            else:
-                # Fallback for nodes not in mapping (shouldn't happen)
-                component_node_labels.append(str(node))
+        # Store component and mapping for later use
+        self.component = component
+        self.node_mapping = node_mapping
 
-        # Ask user if they want to specify start and end points
+        # Ask user how they want to select start/end points
         reply = QMessageBox.question(
             None,
             "Chinese Postman",
-            "Do you want to specify start and end points for an open path?\n\n"
-            "If you select 'Yes', you can choose the start and end nodes.\n"
-            "If you select 'No', a closed circuit will be computed.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            if not component_node_labels:
-                QMessageBox.warning(None, "Chinese Postman", "No nodes found in the graph.")
-                return
-            
-            dialog = StartEndDialog(component_node_labels)
-            if dialog.exec_() == QDialog.Accepted:
-                start_label, end_label = dialog.get_selection()
-                
-                # Map labels back to actual node identifiers
-                # Find the nodes that have these labels
-                start_node = None
-                end_node = None
-                
-                for node, label in node_mapping.items():
-                    if label == start_label:
-                        start_node = node
-                        break
-                
-                for node, label in node_mapping.items():
-                    if label == end_label:
-                        end_node = node
-                        break
-                
-                if start_node is None or end_node is None:
-                    QMessageBox.warning(None, "Chinese Postman", "Could not find selected nodes in graph.")
-                    return
-                
-                try:
-                    eulerian_graph, nodes = postman.chinese_postman_path_with_start_end(
-                        component, start_node, end_node
-                    )
-                    # Map nodes back to labels for display
-                    nodes = [node_mapping.get(node, str(node)) for node in nodes]
-                except ValueError as e:
-                    QMessageBox.warning(None, "Chinese Postman", str(e))
-                    # Fall back to standard path
-                    eulerian_graph, nodes = postman.single_chinese_postman_path(component)
-                    nodes = [node_mapping.get(node, str(node)) for node in nodes]
-            else:
-                return  # User cancelled
-        else:
-            # Standard closed circuit
-            eulerian_graph, nodes = postman.single_chinese_postman_path(component)
-            # Map nodes back to labels for display
-            nodes = [node_mapping.get(node, str(node)) for node in nodes]
-
-        # Ask if user wants to number the segments
-        reply = QMessageBox.question(
-            None,
-            "Chinese Postman",
-            "Do you want to number the segments in the output layer?",
+            "How would you like to select start and end points?\n\n"
+            "1. Click on the map to select nodes (Recommended)\n"
+            "2. Choose from a list of node names",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes
         )
-        number_segments = (reply == QMessageBox.Yes)
 
-        in_length = postman.edge_sum(component) / 1000.0
-        path_length = postman.edge_sum(eulerian_graph) / 1000.0
-        duplicate_length = path_length - in_length
+        if reply == QMessageBox.Yes:
+            # Interactive selection on the map
+            self._start_interactive_selection()
+        else:
+            # Use the dialog with node list
+            self._start_dialog_selection(component, node_mapping)
 
-        # Build the layer with the original graph (for coordinate lookup)
-        new_layer = build_layer_with_labels(graph, nodes, layer.crs(), number_segments, node_mapping)
-        symbol = build_symbol(new_layer)
-        new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+    def _start_interactive_selection(self):
+        """
+        Start the interactive node selection tool.
+        """
+        # Create and activate the selection tool
+        self.selection_tool = NodeSelectionTool(
+            self.iface, self.component, self.node_mapping
+        )
+        self.selection_tool.node_selected.connect(self._on_node_selected)
         
-        QgsProject.instance().addMapLayer(new_layer)
-
-        info = ""
-        info += f"Total length of roads: {in_length:.3f} km\n"
-        info += f"Total length of path: {path_length:.3f} km\n"
-        info += f"Length of sections visited twice: {duplicate_length:.3f} km\n"
+        # Set a reasonable tolerance based on the CRS
+        # For now, use a fixed tolerance (can be made configurable later)
+        self.selection_tool.set_tolerance(10)  # 10 map units
         
-        if number_segments:
-            info += f"Number of segments: {len(nodes) - 1}\n"
-            info += "Segments are numbered in the output layer.\n"
+        # Activate the tool
+        self.iface.mapCanvas().setMapTool(self.selection_tool)
         
-        info += "\n"
-        info += "(If the above values do not make sense, consider changing CRS.)\n"
+        QMessageBox.information(
+            None,
+            "Chinese Postman",
+            "Click on the map to select the START node.\n"
+            "Then click again to select the END node.\n\n"
+            "If you want a closed circuit, select the same node twice."
+        )
 
-        QMessageBox.information(None, "Chinese Postman", info)
+    def _start_dialog_selection(self, component, node_mapping):
+        """
+        Start the dialog-based node selection.
+        """
+        # Get node labels for the dialog
+        node_labels = [label for label in node_mapping.values()]
+        if not node_labels:
+            QMessageBox.warning(None, "Chinese Postman", "No nodes found in the graph.")
+            return
+        
+        dialog = StartEndDialog(node_labels)
+        if dialog.exec_() == QDialog.Accepted:
+            start_label, end_label = dialog.get_selection()
+            
+            # Map labels back to actual node identifiers
+            start_node = None
+            end_node = None
+            
+            for node, label in node_mapping.items():
+                if label == start_label:
+                    start_node = node
+                    break
+            
+            for node, label in node_mapping.items():
+                if label == end_label:
+                    end_node = node
+                    break
+            
+            if start_node is None or end_node is None:
+                QMessageBox.warning(None, "Chinese Postman", "Could not find selected nodes in graph.")
+                return
+            
+            try:
+                eulerian_graph, nodes = postman.chinese_postman_path_with_start_end(
+                    component, start_node, end_node
+                )
+                # Map nodes back to labels for display
+                nodes = [node_mapping.get(node, str(node)) for node in nodes]
+            except ValueError as e:
+                QMessageBox.warning(None, "Chinese Postman", str(e))
+                # Fall back to standard path
+                eulerian_graph, nodes = postman.single_chinese_postman_path(component)
+                nodes = [node_mapping.get(node, str(node)) for node in nodes]
+            
+            # Ask if user wants to number the segments
+            reply = QMessageBox.question(
+                None,
+                "Chinese Postman",
+                "Do you want to number the segments in the output layer?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            number_segments = (reply == QMessageBox.Yes)
+
+            in_length = postman.edge_sum(component) / 1000.0
+            path_length = postman.edge_sum(eulerian_graph) / 1000.0
+            duplicate_length = path_length - in_length
+
+            new_layer = build_layer_with_labels(
+                component, nodes, layer.crs(), number_segments, node_mapping
+            )
+            symbol = build_symbol(new_layer)
+            new_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+            
+            QgsProject.instance().addMapLayer(new_layer)
+
+            info = ""
+            info += f"Total length of roads: {in_length:.3f} km\n"
+            info += f"Total length of path: {path_length:.3f} km\n"
+            info += f"Length of sections visited twice: {duplicate_length:.3f} km\n"
+            
+            if number_segments:
+                info += f"Number of segments: {len(nodes) - 1}\n"
+                info += "Segments are numbered in the output layer.\n"
+            
+            info += "\n"
+            info += "(If the above values do not make sense, consider changing CRS.)\n"
+
+            QMessageBox.information(None, "Chinese Postman", info)
+        
+        # Reset stored data
+        self.component = None
+        self.node_mapping = None
 
 
 def build_graph_with_labels(features):
