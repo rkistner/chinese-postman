@@ -70,9 +70,7 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
         """
         Called when the user clicks on the map.
         Finds the closest node to the click position.
-        
-        Returns:
-            bool: True if a node was selected, False otherwise.
+        Emits node_selected signal if a node is found.
         """
         # Get the clicked point in map coordinates
         point = self.toMapCoordinates(event.pos())
@@ -98,7 +96,6 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
             self.node_selected.emit(closest_node)
             # Show a temporary marker (optional)
             self._show_temporary_marker(point)
-            return True
         else:
             # No node found within tolerance
             QMessageBox.warning(
@@ -106,7 +103,6 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
                 "Chinese Postman",
                 f"No node found within {self.tolerance} units. Try clicking closer to a node."
             )
-            return False
     
     def _show_temporary_marker(self, point):
         """Show a temporary marker at the clicked position."""
