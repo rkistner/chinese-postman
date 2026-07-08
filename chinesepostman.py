@@ -30,7 +30,7 @@ from qgis.core import (
     QgsSymbolLayerRegistry,
     Qgis,
 )
-from qgis.gui import QgsMapTool, QgsMapToolEmitPoint
+from qgis.gui import QgsMapToolEmitPoint
 import networkx as nx
 
 from . import postman
@@ -52,7 +52,7 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
             graph: NetworkX graph with coordinate tuples as nodes.
             node_mapping: Dict mapping coordinate tuples to human-readable labels.
         """
-        QgsMapToolEmitPoint.__init__(self, iface.mapCanvas())
+        super().__init__(iface.mapCanvas())
         self.iface = iface
         self.graph = graph
         self.node_mapping = node_mapping
@@ -113,10 +113,6 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
         # Create a temporary rubber band to show the selection
         # This is optional but provides visual feedback
         pass
-    
-    def deactivate(self):
-        """Clean up when the tool is deactivated."""
-        self.setActive(False)
 
 
 class StartEndDialog(QDialog):
