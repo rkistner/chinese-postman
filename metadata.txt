@@ -9,16 +9,14 @@
 
 [general]
 name=Chinese Postman Solver
-description=Chinese Postman Solver - Solves the Chinese Postman Problem (Route Inspection Problem) for line networks.
+description=Solves the Chinese Postman Problem (Route Inspection Problem) for line networks.
 version=0.4.0
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.x
 author=Ralf Kistner
 email=ralf.kistner@gmail.com
 
-about=Chinese Postman Solver solves the Chinese Postman problem, also
-    known as CPP, postman tour or route inspection problem. It finds the
-    shortest closed path that traverses every edge of a network at least once.
+about=Solves the Chinese Postman Problem for line networks.
 
 tracker=https://github.com/pasqal/chinese-postman/issues
 repository=https://github.com/pasqal/chinese-postman
@@ -32,8 +30,9 @@ changelog=
 - Removed Python 2.7 support
 - Added compatibility with QGIS 4.x
 - Improved CSV import to handle header rows
-- Added more unit tests
-- Modernized codebase (removed deprecated APIs)
+- Added interactive node selection
+- Added segment numbering
+- Modernized codebase
 
 # Tags are comma separated with spaces allowed
 tags=routing, network analysis, shortest path, eulerian, postman
@@ -44,7 +43,7 @@ icon=icon.png
 # experimental flag
 experimental=False
 
-# deprecated flag (applies to the whole plugin, not just a single version)
+# deprecated flag
 deprecated=False
 
 # Python version requirement
