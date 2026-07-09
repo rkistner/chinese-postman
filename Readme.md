@@ -1,17 +1,17 @@
-# Chinese Postman Solver
+# CPP Solver
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](http://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![NetworkX 2.8+](https://img.shields.io/badge/networkx-2.8+-green.svg)](https://networkx.org/)
 [![QGIS 3.0-4.x](https://img.shields.io/badge/qgis-3.0--4.x-brightgreen.svg)](https://qgis.org/)
 
-> **Solves the Chinese Postman Problem (Route Inspection Problem)** – Finds the shortest closed path that traverses every edge of a network at least once.
+> **Solves the CPP Solver Problem (Route Inspection Problem)** – Finds the shortest closed path that traverses every edge of a network at least once.
 
 ---
 
 ## 📖 Table of Contents
 
-- [What is the Chinese Postman Problem?](#what-is-the-chinese-postman-problem)
+- [What is the CPP Solver Problem?](#what-is-the-chinese-postman-problem)
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -32,9 +32,9 @@
 
 ---
 
-## 🤔 What is the Chinese Postman Problem?
+## 🤔 What is the CPP Solver Problem?
 
-The **Chinese Postman Problem (CPP)**, also known as the **Route Inspection Problem**, is a classic problem in graph theory. The goal is to find the **shortest closed path** that traverses **every edge of a graph at least once**. This is particularly useful for:
+The **CPP Solver Problem (CPP)**, also known as the **Route Inspection Problem**, is a classic problem in graph theory. The goal is to find the **shortest closed path** that traverses **every edge of a graph at least once**. This is particularly useful for:
 
 - **Route optimization** for delivery services, garbage collection, or street sweeping.
 - **Network inspection** (e.g., checking power lines, pipelines).
@@ -82,9 +82,9 @@ If the graph is **Eulerian** (all nodes have even degree), the solution is simpl
 #### Method 1: Using QGIS Plugin Manager (Recommended)
 1. Open QGIS.
 2. Go to **Plugins → Manage and Install Plugins...**
-3. Search for **"Chinese Postman Solver"**.
+3. Search for **"CPP Solver"**.
 4. Click **Install Plugin**.
-5. The plugin will be available under **Plugins → Chinese Postman**.
+5. The plugin will be available under **Plugins → CPP Solver**.
 
 #### Method 2: Manual Installation from Source
 1. Clone this repository:
@@ -138,16 +138,16 @@ If the graph is **Eulerian** (all nodes have even degree), the solution is simpl
 - Alternatively, select features manually.
 
 #### Step 3: Run the Plugin
-1. Go to **Plugins → Chinese Postman → Chinese Postman**.
+1. Go to **Plugins → CPP Solver → CPP Solver**.
 2. The plugin will:
    - Analyze the selected features.
-   - Compute the optimal Chinese Postman path.
+   - Compute the optimal CPP Solver path.
    - Create a new **memory layer** named `chinese_postman` with the result.
 
 #### Step 4: Interpret Results
 A popup will display:
 - **Total length of roads**: Sum of all edge lengths in the input network (in km).
-- **Total length of path**: Length of the computed Chinese Postman path (in km).
+- **Total length of path**: Length of the computed CPP Solver path (in km).
 - **Length of sections visited twice**: Extra distance due to duplicated edges (in km).
 
 The result layer will show the **optimal path** as a red line with arrow markers indicating direction.
@@ -226,7 +226,7 @@ Start Node,End Node,Segment Length,Segment ID,Start Longitude,Start Latitude,End
 - **Segment length** is used for distance calculations.
 
 #### Output CSV
-The output CSV file contains the **optimal path segments** in the same format as the input, but ordered according to the Chinese Postman solution.
+The output CSV file contains the **optimal path segments** in the same format as the input, but ordered according to the CPP Solver solution.
 
 ---
 
@@ -266,7 +266,7 @@ pip install pygraphviz
 
 ## 🧮 Algorithm Overview
 
-The plugin uses the following steps to solve the Chinese Postman Problem:
+The plugin uses the following steps to solve the CPP Solver Problem:
 
 1. **Identify Odd-Degree Nodes**: Find all nodes with an odd degree (there will always be an even number of these).
 2. **Build Complete Graph of Odd Nodes**: Create a new graph where:

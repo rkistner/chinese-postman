@@ -5,7 +5,7 @@ Unit tests for the Chinese Postman Problem solver.
 
 import unittest
 import networkx as nx
-import postman
+import cpp_postman as postman
 
 
 class TestPostman(unittest.TestCase):

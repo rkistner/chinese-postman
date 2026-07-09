@@ -1,4 +1,4 @@
-# Requirements for Chinese Postman Solver
+# Requirements for CPP Solver
 # Python 3.8+ required
 
 # Core dependencies

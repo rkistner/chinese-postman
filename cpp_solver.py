@@ -1,7 +1,7 @@
 """
-Chinese Postman Solver - QGIS Plugin
+CPP Solver Solver - QGIS Plugin
 
-A QGIS plugin to solve the Chinese Postman Problem (Route Inspection Problem) for
+A QGIS plugin to solve the CPP Solver Problem (Route Inspection Problem) for
 vector line layers. Finds the shortest closed path that traverses every edge at least once.
 
 Author: Ralf Kistner
@@ -33,7 +33,7 @@ from qgis.core import (
 from qgis.gui import QgsMapToolEmitPoint
 import networkx as nx
 
-from . import postman
+from . import cpp_postman as postman
 from . import resources
 
 
@@ -100,7 +100,7 @@ class NodeSelectionTool(QgsMapToolEmitPoint):
             # No node found within tolerance
             QMessageBox.warning(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 f"No node found within {self.tolerance} units. Try clicking closer to a node."
             )
     
@@ -174,9 +174,9 @@ class StartEndDialog(QDialog):
             return start, self.end_combo.currentText()
 
 
-class ChinesePostman(QObject):
+class CppSolver(QObject):
     """
-    QGIS Plugin for solving the Chinese Postman Problem.
+    QGIS Plugin for solving the CPP Solver Problem.
     """
 
     def __init__(self, iface):
@@ -200,8 +200,8 @@ class ChinesePostman(QObject):
         """
         # Create action that will start plugin configuration
         self.action = QAction(
-            QIcon(":/plugins/chinesepostman/icon.png"),
-            "Chinese Postman",
+            QIcon(":/plugins/cpp_solver/icon.png"),
+            "CPP Solver",
             self.iface.mainWindow()
         )
         # Connect the action to the run method
@@ -209,14 +209,14 @@ class ChinesePostman(QObject):
 
         # Add toolbar button and menu item
         self.iface.addToolBarIcon(self.action)
-        self.iface.addPluginToMenu("&Chinese Postman", self.action)
+        self.iface.addPluginToMenu("&CPP Solver", self.action)
 
     def unload(self):
         """
         Clean up the plugin (remove toolbar button and menu item).
         """
         # Remove the plugin menu item and icon
-        self.iface.removePluginMenu("&Chinese Postman", self.action)
+        self.iface.removePluginMenu("&CPP Solver", self.action)
         self.iface.removeToolBarIcon(self.action)
         
         # Clean up selection tool if it exists
@@ -239,7 +239,7 @@ class ChinesePostman(QObject):
             label = self.node_mapping.get(node, str(node))
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 f"Start node selected: {label}.\nNow click on the END node."
             )
         else:
@@ -260,7 +260,7 @@ class ChinesePostman(QObject):
         Process the selected start and end nodes.
         """
         if self.component is None or self.node_mapping is None:
-            QMessageBox.warning(None, "Chinese Postman", "Graph data not available.")
+            QMessageBox.warning(None, "CPP Solver", "Graph data not available.")
             return
         
         try:
@@ -270,7 +270,7 @@ class ChinesePostman(QObject):
             # Map nodes back to labels for display
             nodes = [self.node_mapping.get(node, str(node)) for node in nodes]
         except ValueError as e:
-            QMessageBox.warning(None, "Chinese Postman", str(e))
+            QMessageBox.warning(None, "CPP Solver", str(e))
             # Fall back to standard path
             eulerian_graph, nodes = postman.single_chinese_postman_path(self.component)
             nodes = [self.node_mapping.get(node, str(node)) for node in nodes]
@@ -278,7 +278,7 @@ class ChinesePostman(QObject):
         # Ask if user wants to number the segments
         reply = QMessageBox.question(
             None,
-            "Chinese Postman",
+            "CPP Solver",
             "Do you want to number the segments in the output layer?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes
@@ -311,7 +311,7 @@ class ChinesePostman(QObject):
         info += "\n"
         info += "(If the above values do not make sense, consider changing CRS.)\n"
 
-        QMessageBox.information(None, "Chinese Postman", info)
+        QMessageBox.information(None, "CPP Solver", info)
         
         # Reset selection
         self.selected_start = None
@@ -329,7 +329,7 @@ class ChinesePostman(QObject):
         if layer is None:
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "No layer selected." + layer_hint
             )
             return
@@ -337,7 +337,7 @@ class ChinesePostman(QObject):
         if layer.type() != QgsMapLayer.VectorLayer:
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "The selected layer is not of type Vector." + layer_hint
             )
             return
@@ -356,9 +356,9 @@ class ChinesePostman(QObject):
         if geometry_type not in line_types:
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "The selected layer's geometry type is not Line. "
-                "Chinese Postman cannot work on Point or Polygon." + layer_hint
+                "CPP Solver cannot work on Point or Polygon." + layer_hint
             )
             return
 
@@ -366,7 +366,7 @@ class ChinesePostman(QObject):
         if len(features) == 0:
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "Please select an area. The 'Select Features by Polygon' tool "
                 "works well for this."
             )
@@ -379,7 +379,7 @@ class ChinesePostman(QObject):
         if len(components) > 1:
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "Warning: the selected area contains multiple disconnected "
                 "components - only the largest one will be used."
             )
@@ -387,7 +387,7 @@ class ChinesePostman(QObject):
         if len(components) == 0:
             QMessageBox.information(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "Error: Could not find any components. Try selecting different features."
             )
             return
@@ -401,7 +401,7 @@ class ChinesePostman(QObject):
         # Ask user how they want to select start/end points
         reply = QMessageBox.question(
             None,
-            "Chinese Postman",
+            "CPP Solver",
             "How would you like to select start and end points?\n\n"
             "1. Click on the map to select nodes (Recommended)\n"
             "2. Choose from a list of node names",
@@ -435,7 +435,7 @@ class ChinesePostman(QObject):
         
         QMessageBox.information(
             None,
-            "Chinese Postman",
+            "CPP Solver",
             "Click on the map to select the START node.\n"
             "Then click again to select the END node.\n\n"
             "If you want a closed circuit, select the same node twice."
@@ -448,7 +448,7 @@ class ChinesePostman(QObject):
         # Get node labels for the dialog
         node_labels = [label for label in node_mapping.values()]
         if not node_labels:
-            QMessageBox.warning(None, "Chinese Postman", "No nodes found in the graph.")
+            QMessageBox.warning(None, "CPP Solver", "No nodes found in the graph.")
             return
         
         dialog = StartEndDialog(node_labels)
@@ -470,7 +470,7 @@ class ChinesePostman(QObject):
                     break
             
             if start_node is None or end_node is None:
-                QMessageBox.warning(None, "Chinese Postman", "Could not find selected nodes in graph.")
+                QMessageBox.warning(None, "CPP Solver", "Could not find selected nodes in graph.")
                 return
             
             try:
@@ -480,7 +480,7 @@ class ChinesePostman(QObject):
                 # Map nodes back to labels for display
                 nodes = [node_mapping.get(node, str(node)) for node in nodes]
             except ValueError as e:
-                QMessageBox.warning(None, "Chinese Postman", str(e))
+                QMessageBox.warning(None, "CPP Solver", str(e))
                 # Fall back to standard path
                 eulerian_graph, nodes = postman.single_chinese_postman_path(component)
                 nodes = [node_mapping.get(node, str(node)) for node in nodes]
@@ -488,7 +488,7 @@ class ChinesePostman(QObject):
             # Ask if user wants to number the segments
             reply = QMessageBox.question(
                 None,
-                "Chinese Postman",
+                "CPP Solver",
                 "Do you want to number the segments in the output layer?",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes
@@ -519,7 +519,7 @@ class ChinesePostman(QObject):
             info += "\n"
             info += "(If the above values do not make sense, consider changing CRS.)\n"
 
-            QMessageBox.information(None, "Chinese Postman", info)
+            QMessageBox.information(None, "CPP Solver", info)
         
         # Reset stored data
         self.component = None

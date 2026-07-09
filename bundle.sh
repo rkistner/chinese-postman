@@ -1,12 +1,12 @@
 #!/bin/sh
-# Chinese Postman Solver - Bundle Script
+# CPP Solver - Bundle Script
 # Creates a ZIP file for manual QGIS plugin installation
 # Note: The ZIP should contain files directly in the root, not in a subdirectory,
-# to avoid the "chinesepostman/chinesepostman" path issue in QGIS.
+# to avoid the "cpp_solver/cpp_solver" path issue in QGIS.
 
 set -e  # Exit on error
 
-echo "Bundling Chinese Postman Solver plugin..."
+echo "Bundling CPP Solver plugin..."
 
 # Step 1: Compile resources.qrc to resources.py
 echo "Compiling resources..."
@@ -27,7 +27,7 @@ fi
 
 # Step 2: Create temporary directory for the bundle contents
 # We create a flat structure: all files go directly into the temp dir
-BUNDLE_DIR="chinesepostman_bundle_contents"
+BUNDLE_DIR="cpp_solver_bundle_contents"
 rm -rf "$BUNDLE_DIR"
 mkdir -p "$BUNDLE_DIR"
 
@@ -46,7 +46,7 @@ echo "Skipping lib/ directory (old Python 2.7 .egg files are not needed for Pyth
 echo "Creating ZIP archive..."
 if command -v zip >/dev/null 2>&1; then
     # Change to the temp directory and create ZIP with relative paths
-    (cd "$BUNDLE_DIR" && zip -r ../chinesepostman_bundle.zip .)
+    (cd "$BUNDLE_DIR" && zip -r ../cpp_solver_bundle.zip .)
 else
     echo "ERROR: 'zip' command not found."
     echo "Please install zip: sudo apt-get install zip (Ubuntu/Debian)"
@@ -58,11 +58,11 @@ fi
 rm -rf "$BUNDLE_DIR"
 
 echo ""
-echo "✅ Bundle created: chinesepostman_bundle.zip"
+echo "✅ Bundle created: cpp_solver_bundle.zip"
 echo ""
 echo "IMPORTANT: To install this bundle in QGIS:"
 echo "  1. Go to: Plugins -> Manage and Install Plugins... -> Install from ZIP"
-echo "  2. Select chinesepostman_bundle.zip"
+echo "  2. Select cpp_solver_bundle.zip"
 echo "  3. QGIS will extract the files directly into the plugin directory."
 echo ""
 echo "NOTE: The bundle does NOT include NetworkX .egg files."

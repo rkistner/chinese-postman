@@ -3,17 +3,17 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Chinese Postman Solver
+name=CPP Solver
 qgisMinimumVersion=3.0
-description=Solves the Chinese Postman Problem (Route Inspection Problem) for line networks.
+description=CPP Solver - Solves the Chinese Postman Problem (Route Inspection Problem) for line networks.
 version=0.5.0
 author=Ralf Kistner
 email=mail@gmail.com
 
-about=Solves the Chinese Postman Problem for line networks.
+about=CPP Solver - Solves the Chinese Postman Problem for line networks.
 
-tracker=https://github.com/pasqal/chinese-postman/issues
-repository=https://github.com/pasqal/chinese-postman
+tracker=https://github.com/pasqal/cpp_solver/issues
+repository=https://github.com/pasqal/cpp_solver
 # End of mandatory metadata
 
 # Recommended items:
@@ -44,4 +44,3 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
-

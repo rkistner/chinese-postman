@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/chinesepostman" >
+    <qresource prefix="/plugins/cpp_solver" >
         <file>icon.png</file>
     </qresource>
 </RCC>

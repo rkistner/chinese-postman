@@ -1,5 +1,5 @@
 #!/bin/sh
-# Chinese Postman Solver - Installation Script
+# CPP Solver - Installation Script
 # Modernized for QGIS 3.x and 4.x, Qt5 and Qt6
 
 set -e  # Exit on error
@@ -71,7 +71,7 @@ if [ ! -d "$DEFAULT_PROFILE" ]; then
 fi
 
 # Step 4: Create plugins directory if it doesn't exist
-PLUGINS_DIR="$DEFAULT_PROFILE/python/plugins/chinesepostman"
+PLUGINS_DIR="$DEFAULT_PROFILE/python/plugins/cpp_solver"
 echo "Installing to: $PLUGINS_DIR"
 mkdir -p "$PLUGINS_DIR"
 
@@ -85,5 +85,5 @@ ln -sfn "$PWD" "$PLUGINS_DIR"
 
 echo ""
 echo "✅ Installation successful!"
-echo "Restart QGIS to use the Chinese Postman Solver plugin."
-echo "The plugin will be available under: Plugins -> Chinese Postman"
+echo "Restart QGIS to use the CPP Solver plugin."
+echo "The plugin will be available under: Plugins -> CPP Solver"
